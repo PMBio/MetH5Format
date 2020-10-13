@@ -1,12 +1,12 @@
-from setuptools import setup
+import setuptools
 
-setup(name='meth5',
+setuptools.setup(name='meth5',
       version='0.1',
       description='HDF5-based container format for Methylation calls from long reads',
       url='https://github.com/snajder-r/meth5format',
       author='Rene Snajder',
       license='MIT',
-      packages=['meth5'],
+      packages=setuptools.find_packages(),
       install_requires=[
           'numpy',
           'scipy==1.4.1',
