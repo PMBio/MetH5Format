@@ -182,6 +182,7 @@ class MethlyationValuesContainer:
         return aggregated_llrs, ranges[range_start, :]
 
     def get_llr_site_median(self):
+        """Calls get_llr_site_aggregate with np.median as an aggregation function"""
         return self.get_llr_site_aggregate(np.median)
 
     def to_sparse_methylation_matrix(self, read_groups_key: str = None) -> SparseMethylationMatrixContainer:
