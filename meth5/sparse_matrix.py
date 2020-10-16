@@ -62,9 +62,7 @@ class SparseMethylationMatrixContainer:
         self.read_names = np.array(read_names)
         self.genomic_coord = np.array(genomic_coord_start)
         self.genomic_coord_end = np.array(genomic_coord_end)
-        self.coord_to_index_dict = {
-            genomic_coord_start[i]: i for i in range(len(genomic_coord_start))
-        }
+        self.coord_to_index_dict = {genomic_coord_start[i]: i for i in range(len(genomic_coord_start))}
         self.read_samples = read_samples
 
     def _compact(self):
@@ -77,12 +75,8 @@ class SparseMethylationMatrixContainer:
         call
         """
         while True:
-            read_has_values = np.array(
-                ((self.met_matrix != 0).sum(axis=1) > 0)
-            ).flatten()
-            site_has_values = np.array(
-                ((self.met_matrix != 0).sum(axis=0) > 0)
-            ).flatten()
+            read_has_values = np.array(((self.met_matrix != 0).sum(axis=1) > 0)).flatten()
+            site_has_values = np.array(((self.met_matrix != 0).sum(axis=0) > 0)).flatten()
             self.met_matrix = self.met_matrix[read_has_values, :][:, site_has_values]
             self.read_names = self.read_names[read_has_values]
             self.genomic_coord = self.genomic_coord[site_has_values]
@@ -93,9 +87,7 @@ class SparseMethylationMatrixContainer:
             if (~read_has_values).sum() == 0 and (~site_has_values).sum() == 0:
                 break
         self.shape = self.met_matrix.shape
-        self.coord_to_index_dict = {
-            self.genomic_coord[i]: i for i in range(len(self.genomic_coord))
-        }
+        self.coord_to_index_dict = {self.genomic_coord[i]: i for i in range(len(self.genomic_coord))}
 
     def get_submatrix(self, start: int, end: int) -> SparseMethylationMatrixContainer:
         """Creates a submatrix containing only the genomic positions
@@ -114,18 +106,12 @@ class SparseMethylationMatrixContainer:
         sub_genomic_coord_end = self.genomic_coord_end[start:end]
 
         ret = SparseMethylationMatrixContainer(
-            sub_met_matrix,
-            self.read_names,
-            sub_genomic_coord,
-            sub_genomic_coord_end,
-            read_samples=self.read_samples,
+            sub_met_matrix, self.read_names, sub_genomic_coord, sub_genomic_coord_end, read_samples=self.read_samples,
         )
         ret._compact()
         return ret
 
-    def get_submatrix_from_genomic_locations(
-        self, start_base: int, end_base: int
-    ) -> SparseMethylationMatrixContainer:
+    def get_submatrix_from_genomic_locations(self, start_base: int, end_base: int) -> SparseMethylationMatrixContainer:
         """Returns a new SparseMethylationMatrixContainer containing
         only data for the provided genomic reigon.
 
@@ -137,9 +123,7 @@ class SparseMethylationMatrixContainer:
         end = self.coord_to_index_dict[end_base]
         return self.get_submatrix(start, end)
 
-    def get_submatrix_from_read_mask(
-        self, allowed_reads: np.ndarray()
-    ) -> SparseMethylationMatrixContainer:
+    def get_submatrix_from_read_mask(self, allowed_reads: np.ndarray()) -> SparseMethylationMatrixContainer:
         """Creates a submatrix containing only the given reads and their
         methylation calls.
 
@@ -149,23 +133,15 @@ class SparseMethylationMatrixContainer:
         idx = allowed_reads
         sub_met_matrix = self.met_matrix[idx, :]
         sub_read_names = self.read_names[idx]
-        sub_read_samles = (
-            self.read_samples[idx] if self.read_samples is not None else None
-        )
+        sub_read_samles = self.read_samples[idx] if self.read_samples is not None else None
 
         ret = SparseMethylationMatrixContainer(
-            sub_met_matrix,
-            sub_read_names,
-            self.genomic_coord,
-            self.genomic_coord_end,
-            read_samples=sub_read_samles,
+            sub_met_matrix, sub_read_names, self.genomic_coord, self.genomic_coord_end, read_samples=sub_read_samles,
         )
         ret._compact()
         return ret
 
-    def get_submatrix_from_read_names(
-        self, allowed_reads: List[str]
-    ) -> SparseMethylationMatrixContainer:
+    def get_submatrix_from_read_names(self, allowed_reads: List[str]) -> SparseMethylationMatrixContainer:
         """Creates a submatrix containing only the given reads and their
         methylation calls.
 
