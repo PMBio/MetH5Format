@@ -143,6 +143,8 @@ class MethlyationValuesContainer:
         """
         return self.chromosome.h5group["llr"][self.start : self.end]
 
+    # TODO method that returns median LLR (or any aggregation) per site
+
     def get_read_names(self) -> np.ndarray:
         """
         :return: Numpy array of shape (n) containing the read name for each
@@ -526,6 +528,7 @@ class MetH5File:
                 chunks=(self.chunk_size, 2),
                 maxshape=(None, 2),
             )
+            # TODO Add strand as a (bool) dataframe
             self._create_or_extend(
                 parent_group=chrom_group,
                 name="llr",
@@ -536,6 +539,8 @@ class MetH5File:
                 chunks=(self.chunk_size,),
                 maxshape=(None,),
             )
+            # TODO Switch to indexing reads numerically and storing a map of read_names
+            # to index in another dataframe (or attr)
             self._create_or_extend(
                 parent_group=chrom_group,
                 name="read_name",
@@ -596,6 +601,8 @@ class MetH5File:
         """
         for chromosome in self.get_chromosomes():
             self[chromosome].create_chunk_index(*args, **kwargs)
+
+    # TODO Implement a method that returns methylation values for one read group
 
     def annotate_read_groups(
         self, read_group_key: str, map: Dict[str, int], exists_ok=False, overwrite=False
