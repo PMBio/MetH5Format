@@ -177,7 +177,7 @@ class MethlyationValuesContainer:
         range_cp = np.argwhere(range_diff).flatten() + 1
         range_start = [0, *range_cp]
         range_end = [*range_cp, llrs.shape[0]]
-        # Calls aggregation function ones for each unique range
+        # Calls aggregation function once for each unique range
         aggregated_llrs = np.array([aggregation_fun(llrs[rs:re]) for rs, re in zip(range_start, range_end)])
         return aggregated_llrs, ranges[range_start, :]
 
