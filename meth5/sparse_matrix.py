@@ -107,11 +107,7 @@ class SparseMethylationMatrixContainer:
         sub_genomic_coord_end = self.genomic_coord_end[start:end]
 
         ret = SparseMethylationMatrixContainer(
-            sub_met_matrix,
-            self.read_names,
-            sub_genomic_coord,
-            sub_genomic_coord_end,
-            read_samples=self.read_samples,
+            sub_met_matrix, self.read_names, sub_genomic_coord, sub_genomic_coord_end, read_samples=self.read_samples,
         )
         if compact:
             ret._compact()
@@ -171,11 +167,7 @@ class SparseMethylationMatrixContainer:
         sub_read_samles = self.read_samples[idx] if self.read_samples is not None else None
 
         ret = SparseMethylationMatrixContainer(
-            sub_met_matrix,
-            sub_read_names,
-            self.genomic_coord,
-            self.genomic_coord_end,
-            read_samples=sub_read_samles,
+            sub_met_matrix, sub_read_names, self.genomic_coord, self.genomic_coord_end, read_samples=sub_read_samles,
         )
         if compact:
             ret._compact()

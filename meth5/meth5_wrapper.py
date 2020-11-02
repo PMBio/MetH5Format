@@ -6,6 +6,7 @@ import scipy.sparse as sp
 import logging
 from pathlib import Path
 from typing import Union, List, Dict, IO, Tuple
+from types import FunctionType
 
 from meth5.sparse_matrix import SparseMethylationMatrixContainer
 
@@ -24,8 +25,7 @@ def _unique_genomic_range(genomic_ranges: np.ndarray) -> np.ndarray:
 
 
 def create_sparse_matrix_from_samples(
-    sample_met_containers: Dict[str, MethlyationValuesContainer],
-    sample_prefix_readnames=False,
+    sample_met_containers: Dict[str, MethlyationValuesContainer], sample_prefix_readnames=False,
 ) -> SparseMethylationMatrixContainer:
     """Creates a SparseMethylationMatrixContainer from a dictionary of
     MethylationValuesContainer. Each key value pair represents one
@@ -55,9 +55,7 @@ def create_sparse_matrix_from_samples(
         ]
         for s in samples
     }
-    genomic_ranges = {
-        s: [r for r in sample_met_containers[s].get_ranges_unique()] for s in samples
-    }
+    genomic_ranges = {s: [r for r in sample_met_containers[s].get_ranges_unique()] for s in samples}
 
     # Creates a sample assignment for every methylation call
     sample_assignment = [s for s in samples for _ in read_names_dict[s]]
@@ -80,20 +78,13 @@ def create_sparse_matrix_from_samples(
 
         llr_ds = llrs.get_llrs()
         sparse_data += list(llr_ds[:])
-        sparse_x += [
-            read_dict[sample + r.decode() if sample_prefix_readnames else r.decode()]
-            for r in read_name_ds[:]
-        ]
+        sparse_x += [read_dict[sample + r.decode() if sample_prefix_readnames else r.decode()] for r in read_name_ds[:]]
         sparse_y += [coord_to_index_dict[gr[0]] for gr in range_ds[:]]
 
     # Create sparse matrix
     met_matrix = sp.csc_matrix((sparse_data, (sparse_x, sparse_y)))
     return SparseMethylationMatrixContainer(
-        met_matrix,
-        read_names,
-        genomic_ranges[:, 0],
-        genomic_ranges[:, 1],
-        read_samples=sample_assignment,
+        met_matrix, read_names, genomic_ranges[:, 0], genomic_ranges[:, 1], read_samples=sample_assignment,
     )
 
 
@@ -150,7 +141,7 @@ class MethlyationValuesContainer:
         """
         return self.chromosome.h5group["read_name"][self.start : self.end]
 
-    def get_read_groups(self, group_key) -> np.ndarray:
+    def get_read_groups(self, group_key: str) -> np.ndarray:
         """The Meth5 file can store multiple different groupings of
         methylation calls. Typically, this would be based on grouping
         reads (such as from read-phasing) but any sort of grouping of
@@ -163,9 +154,38 @@ class MethlyationValuesContainer:
         """
         return self.chromosome.h5group["read_groups"][group_key][self.start : self.end]
 
-    def to_sparse_methylation_matrix(
-        self, read_groups_key: str = None
-    ) -> SparseMethylationMatrixContainer:
+    def get_llr_site_aggregate(self, aggregation_fun: FunctionType) -> Tuple[np.ndarray, np.ndarray]:
+        """Computes per-site an aggregate of the LLR. The provided
+        aggregation function should take a numpy array and can return
+        any arbitrary aggregate. The return value is a numpy array
+        containing the aggregates for each unique genomic range.
+
+        Note that ranges with same same startpoint but different endpoint will
+        be considered as two separate ranges
+
+        :param aggregation_fun: Tuple consisting of:
+          * aggregated llrs
+          * ranges for each aggregation
+        :return:
+        """
+        llrs = self.get_llrs()
+        ranges = self.get_ranges()
+
+        # Takes advantage of ranges being sorted
+        range_diff = (np.diff(ranges[:, 0]) != 0) | (np.diff(ranges[:, 1]) != 0)
+        # Changepoints where it goes from one range to the next
+        range_cp = np.argwhere(range_diff).flatten() + 1
+        range_start = [0, *range_cp]
+        range_end = [*range_cp, llrs.shape[0]]
+        # Calls aggregation function once for each unique range
+        aggregated_llrs = np.array([aggregation_fun(llrs[rs:re]) for rs, re in zip(range_start, range_end)])
+        return aggregated_llrs, ranges[range_start, :]
+
+    def get_llr_site_median(self):
+        """Calls get_llr_site_aggregate with np.median as an aggregation function"""
+        return self.get_llr_site_aggregate(np.median)
+
+    def to_sparse_methylation_matrix(self, read_groups_key: str = None) -> SparseMethylationMatrixContainer:
         """Creates a SparseMethylationMatrixContainer from the values in
         this container. If a read_groups_key is provided, then Meth5
         file will be checked for a matching read group annotation, which
@@ -184,9 +204,7 @@ class MethlyationValuesContainer:
         genomic_ranges = self.get_ranges_unique()
 
         # Assigns y coordinate in the matrix to a genomic position
-        coord_to_index_dict = {
-            genomic_ranges[i, 0]: i for i in range(len(genomic_ranges))
-        }
+        coord_to_index_dict = {genomic_ranges[i, 0]: i for i in range(len(genomic_ranges))}
 
         # Assigns x coordinate in the matrix to a read name
         read_dict = {read_names[i]: i for i in range(len(read_names))}
@@ -199,20 +217,14 @@ class MethlyationValuesContainer:
 
         if read_groups_key is not None:
             read_groups_ds = self.get_read_groups(read_groups_key)
-            read_samples_dict = {
-                rn.decode(): rg for (rn, rg) in zip(read_name_ds[:], read_groups_ds[:])
-            }
+            read_samples_dict = {rn.decode(): rg for (rn, rg) in zip(read_name_ds[:], read_groups_ds[:])}
             read_samples = np.array([read_samples_dict[r] for r in read_names])
         else:
             read_samples = None
 
         met_matrix = sp.csc_matrix((sparse_data, (sparse_x, sparse_y)))
         return SparseMethylationMatrixContainer(
-            met_matrix,
-            read_names,
-            genomic_ranges[:, 0],
-            genomic_ranges[:, 1],
-            read_samples=read_samples,
+            met_matrix, read_names, genomic_ranges[:, 0], genomic_ranges[:, 1], read_samples=read_samples,
         )
 
 
@@ -252,9 +264,7 @@ class ChromosomeContainer:
         """
         return [i for i in range(self.get_number_of_chunks())]
 
-    def _seek_overlap_ranges_backwards(
-        self, chunk_id: int, start_value: int = -1
-    ) -> int:
+    def _seek_overlap_ranges_backwards(self, chunk_id: int, start_value: int = -1) -> int:
         """This helper function recursively looks backwards starting
         from a specified chunk, and returns the index of the first
         position in the dataframes that contains a methylation call for
@@ -279,9 +289,7 @@ class ChromosomeContainer:
 
         if matches[0] == 0 and chunk_id > 0:
             # All of this chunk is the same range, we need to go deeper
-            return self._seek_overlap_ranges_backwards(
-                chunk_id - 1, start_value=start_value
-            )
+            return self._seek_overlap_ranges_backwards(chunk_id - 1, start_value=start_value)
 
         # Part of this chunk has entries for this start position
         return self.chunk_size * chunk_id + matches[0]
@@ -310,10 +318,7 @@ class ChromosomeContainer:
             # Nothing in this chunk, return end of the chunk we came from
             return self.chunk_size * chunk_id - 1
 
-        if (
-            matches[-1] == self.chunk_size - 1
-            and chunk_id < self.get_number_of_chunks() - 1
-        ):
+        if matches[-1] == self.chunk_size - 1 and chunk_id < self.get_number_of_chunks() - 1:
             # All of this chunk is the same range, we need to go deeper
             return self._seek_overlap_ranges_forwards(chunk_id + 1, end_value=end_value)
 
@@ -363,14 +368,10 @@ class ChromosomeContainer:
             self.h5group["chunk_ranges"].resize(index.shape)
             self.h5group["chunk_ranges"][:] = index
         else:
-            self.h5group.create_dataset(
-                name="chunk_ranges", data=index, dtype=int, maxshape=(None, 2)
-            )
+            self.h5group.create_dataset(name="chunk_ranges", data=index, dtype=int, maxshape=(None, 2))
         self.h5group.attrs["chunk_size"] = self.chunk_size
 
-    def get_values_in_range(
-        self, genomic_start: int, genomic_end: int
-    ) -> MethlyationValuesContainer:
+    def get_values_in_range(self, genomic_start: int, genomic_end: int) -> MethlyationValuesContainer:
         """Returns a MethlyationValuesContainer providing access to the
         specified genomic region.
 
@@ -382,16 +383,12 @@ class ChromosomeContainer:
          available
         """
         if "chunk_size" not in self.h5group.attrs.keys():
-            raise ValueError(
-                "Random access to ranges only allowed if index exists. Call create_chunk_index"
-            )
+            raise ValueError("Random access to ranges only allowed if index exists. Call create_chunk_index")
         index_chunk_size = self.h5group.attrs["chunk_size"]
         index = self.h5group["chunk_ranges"][:]
 
         # First find the right chunk for start and end
-        chunk_indices = np.arange(len(index))[
-            (index[:, 0] < genomic_end) & (genomic_start <= index[:, 1])
-        ]
+        chunk_indices = np.arange(len(index))[(index[:, 0] < genomic_end) & (genomic_start <= index[:, 1])]
 
         if len(chunk_indices) == 0:
             # If no chunk contains these values
@@ -405,9 +402,7 @@ class ChromosomeContainer:
         start_chunk_start = start_chunk * index_chunk_size
         start_chunk_end = min(len(self) - 1, (start_chunk + 1) * index_chunk_size)
         start_chunk_ranges = self.h5group["range"][start_chunk_start:start_chunk_end, :]
-        start_in_range_indices = np.arange(len(start_chunk_ranges))[
-            start_chunk_ranges[:, 1] >= genomic_start
-        ]
+        start_in_range_indices = np.arange(len(start_chunk_ranges))[start_chunk_ranges[:, 1] >= genomic_start]
         if len(start_in_range_indices) > 0:
             # Add index of first value that is in the range
             start_index += start_in_range_indices[0]
@@ -417,9 +412,7 @@ class ChromosomeContainer:
         end_chunk_start = end_chunk * index_chunk_size
         end_chunk_end = min(len(self) - 1, (end_chunk + 1) * index_chunk_size)
         end_chunk_ranges = self.h5group["range"][end_chunk_start:end_chunk_end, :]
-        end_oor_indices = np.arange(len(end_chunk_ranges))[
-            end_chunk_ranges[:, 0] >= genomic_end
-        ]
+        end_oor_indices = np.arange(len(end_chunk_ranges))[end_chunk_ranges[:, 0] >= genomic_end]
         if len(end_oor_indices) > 0:
             # Add index of first value that is out of range
             end_index += end_oor_indices[0]
@@ -433,9 +426,7 @@ class ChromosomeContainer:
 class MetH5File:
     """Main wrapper for Meth5 files."""
 
-    def __init__(
-        self, h5filepath: Union[str, Path, IO], mode: str = "r", chunk_size=int(10e5)
-    ):
+    def __init__(self, h5filepath: Union[str, Path, IO], mode: str = "r", chunk_size=int(10e5)):
         """Initializes Meth5File and directly opens the file pointer.
 
         :param h5filepath: Path to Meth5 file or IO object providing access to it
@@ -461,14 +452,7 @@ class MetH5File:
     def __exit__(self, exittype, exitvalue, traceback):
         self.close()
 
-    def _create_or_extend(
-        self,
-        parent_group: h5py.Group,
-        name: str,
-        shape: Tuple,
-        data: np.ndarray,
-        **kwargs
-    ):
+    def _create_or_extend(self, parent_group: h5py.Group, name: str, shape: Tuple, data: np.ndarray, **kwargs):
         """Internal helper function that either creates a dataframe if
         it doesn't exist or it extends it by using the h5py resize
         function.
@@ -485,10 +469,7 @@ class MetH5File:
             num_data = data.shape[0] if hasattr(data, "shape") else len(data)
             ds = parent_group[name]
             old_shape = ds.shape
-            new_shape = (
-                old_shape[i] + (num_data if i == 0 else 0)
-                for i in range(len(old_shape))
-            )
+            new_shape = (old_shape[i] + (num_data if i == 0 else 0) for i in range(len(old_shape)))
             ds.resize(new_shape)
 
             ds[old_shape[0] :] = data
@@ -526,6 +507,7 @@ class MetH5File:
                 chunks=(self.chunk_size, 2),
                 maxshape=(None, 2),
             )
+            # TODO Add strand as a (bool) dataframe
             self._create_or_extend(
                 parent_group=chrom_group,
                 name="llr",
@@ -536,6 +518,8 @@ class MetH5File:
                 chunks=(self.chunk_size,),
                 maxshape=(None,),
             )
+            # TODO Switch to indexing reads numerically and storing a map of read_names
+            # to index in another dataframe (or attr)
             self._create_or_extend(
                 parent_group=chrom_group,
                 name="read_name",
@@ -583,9 +567,7 @@ class MetH5File:
         if chromosome in self.chrom_container_cache.keys():
             return self.chrom_container_cache[chromosome]
         else:
-            ret = ChromosomeContainer(
-                self.h5_fp["chromosomes"][chromosome], self.chunk_size
-            )
+            ret = ChromosomeContainer(self.h5_fp["chromosomes"][chromosome], self.chunk_size)
             self.chrom_container_cache[chromosome] = ret
             return ret
 
@@ -597,9 +579,9 @@ class MetH5File:
         for chromosome in self.get_chromosomes():
             self[chromosome].create_chunk_index(*args, **kwargs)
 
-    def annotate_read_groups(
-        self, read_group_key: str, map: Dict[str, int], exists_ok=False, overwrite=False
-    ):
+    # TODO Implement a method that returns methylation values for one read group
+
+    def annotate_read_groups(self, read_group_key: str, map: Dict[str, int], exists_ok=False, overwrite=False):
         """Store read group annotation in the Meth5 file, which can
         later be accessed through the MethylationValuesContainer object.
 
@@ -618,20 +600,10 @@ class MetH5File:
             rg_g = chr_g.require_group("read_groups")
             if read_group_key in rg_g.keys():
                 if not exists_ok:
-                    raise ValueError(
-                        "Cannot annotate read groups - group assignment with this key "
-                        "already exists"
-                    )
+                    raise ValueError("Cannot annotate read groups - group assignment with this key " "already exists")
                 elif not overwrite:
                     continue
 
-            rg_assignment = [
-                map.get(read.decode(), -1) for read in chr_g["read_name"][:]
-            ]
-            rg_ds = rg_g.require_dataset(
-                name=read_group_key,
-                dtype=int,
-                shape=(len(rg_assignment),),
-                maxshape=(None,),
-            )
+            rg_assignment = [map.get(read.decode(), -1) for read in chr_g["read_name"][:]]
+            rg_ds = rg_g.require_dataset(name=read_group_key, dtype=int, shape=(len(rg_assignment),), maxshape=(None,),)
             rg_ds[:] = rg_assignment
