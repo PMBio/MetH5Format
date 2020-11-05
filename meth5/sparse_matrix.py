@@ -121,7 +121,6 @@ class SparseMethylationMatrixContainer:
 
         :param start_base: genomic start location
         :param end_base: genomic end location
-        :param compact: whether or not to reads that no longer have any data
         :return: new SparseMethylationMatrixContainer object
         """
         start = self.coord_to_index_dict[start_base]
@@ -161,10 +160,9 @@ class SparseMethylationMatrixContainer:
         any data
         :return: new SparseMethylationMatrixContainer object
         """
-        idx = allowed_reads
-        sub_met_matrix = self.met_matrix[idx, :]
-        sub_read_names = self.read_names[idx]
-        sub_read_samles = self.read_samples[idx] if self.read_samples is not None else None
+        sub_met_matrix = self.met_matrix[allowed_reads, :]
+        sub_read_names = self.read_names[allowed_reads]
+        sub_read_samles = self.read_samples[allowed_reads] if self.read_samples is not None else None
 
         ret = SparseMethylationMatrixContainer(
             sub_met_matrix, sub_read_names, self.genomic_coord, self.genomic_coord_end, read_samples=sub_read_samles,
@@ -193,3 +191,53 @@ class SparseMethylationMatrixContainer:
         matrix container object
         """
         return self.genomic_coord[0], self.genomic_coord[-1]
+
+    def merge(
+        self: SparseMethylationMatrixContainer,
+        other: SparseMethylationMatrixContainer,
+        sample_names: Any[str, Tuple[str, str]] = "keep",
+    ):
+        """
+        Merge matrix with another matrix along the same genomic coordinates
+        :param other: other matrix
+        :param sample_names: If "keep", the sample names from both matrices are kept.
+                             If a tuple of size 2, all reads from this matrix will receive the sample name
+                             of the first, and the reads from the other matrix will receive the second entry
+        :return: a new SparseMethylationMatrix
+        """
+        coords = sorted(list(set(self.genomic_coord).union(set(other.genomic_coord))))
+        coords_self_end = [np.max(self.genomic_coord_end[self.genomic_coord == g], initial=0) for g in coords]
+        coords_other = [np.max(other.genomic_coord_end[other.genomic_coord == g], initial=0) for g in coords]
+        coords_end = [max(am, bm) for am, bm in zip(coords_self_end, coords_other)]
+
+        coord_to_index_dict = {coords[i]: i for i in range(len(coords))}
+
+        self_coo = self.met_matrix.tocoo()
+        other_coo = other.met_matrix.tocoo()
+        data_combined = np.concatenate((self_coo.data, other_coo.data))
+        row_offset = self_coo.shape[0]
+        other_row = [br + row_offset for br in other_coo.row]
+
+        self_col = [coord_to_index_dict[self.genomic_coord[c]] for c in self_coo.col]
+        other_col = [coord_to_index_dict[other.genomic_coord[c]] for c in other_coo.col]
+
+        row_combined = np.concatenate((self_coo.row, other_row))
+        col_combined = np.concatenate((self_col, other_col))
+
+        met_matrix = sp.csc_matrix((data_combined, (row_combined, col_combined)))
+
+        read_names = np.concatenate((self.read_names, other.read_names))
+
+        if sample_names == "keep":
+            if self.read_samples is not None and other.read_samples is not None:
+                read_samples = np.concatenate((self.read_samples, other.read_samples))
+            else:
+                read_samples = None
+        else:
+            read_samples = np.array(
+                [sample_names[0]] * len(self.read_names) + [sample_names[1]] * len(other.read_names)
+            )
+
+        return SparseMethylationMatrixContainer(
+            met_matrix, read_names, np.array(coords), np.array(coords_end), read_samples
+        )
