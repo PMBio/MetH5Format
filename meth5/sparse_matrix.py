@@ -133,6 +133,10 @@ class SparseMethylationMatrixContainer:
         """Creates a submatrix containing only the given sites and their
         methylation calls.
 
+        Compatibility note: If used with scipy 1.5.2, allowed_sites can be
+        any iterable. If used with scipy 1.4.2, allowed_sites must be a numpy
+        array. If providing a list, it may sometimes throw ValueErrors
+
         :param allowed_sites: boolean array of shape (n_sites)
         :param compact: whether or not to genomic sites that no longer have
         any data
