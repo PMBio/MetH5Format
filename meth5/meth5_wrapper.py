@@ -581,7 +581,9 @@ class MetH5File:
 
     # TODO Implement a method that returns methylation values for one read group
 
-    def annotate_read_groups(self, read_group_key: str, map: Dict[str, int], exists_ok=False, overwrite=False):
+    def annotate_read_groups(
+        self, read_group_key: str, map: Dict[str, int], labels: Dict[int, str] = None, exists_ok=False, overwrite=False
+    ):
         """Store read group annotation in the Meth5 file, which can
         later be accessed through the MethylationValuesContainer object.
 
@@ -589,6 +591,7 @@ class MetH5File:
         annotion is needed.
         :param read_group_key: key under which this annotation should be stored
         :param map: maps read names to read group
+        :param labels: maps the read group key (int) to a readable label (string)
         :param exists_ok: if False, an error will be thrown if a grouping with this key
         already exists (default=False)
         :param overwrite: if exists_ok=True and overwrite=True, an existing mapping will
@@ -607,3 +610,7 @@ class MetH5File:
             rg_assignment = [map.get(read.decode(), -1) for read in chr_g["read_name"][:]]
             rg_ds = rg_g.require_dataset(name=read_group_key, dtype=int, shape=(len(rg_assignment),), maxshape=(None,),)
             rg_ds[:] = rg_assignment
+
+            rg_ds.attrs.clear()
+            if labels is not None:
+                rg_ds.attrs.update(labels)
