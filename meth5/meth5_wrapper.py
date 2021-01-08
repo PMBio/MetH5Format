@@ -25,7 +25,8 @@ def _unique_genomic_range(genomic_ranges: np.ndarray) -> np.ndarray:
 
 
 def create_sparse_matrix_from_samples(
-    sample_met_containers: Dict[str, MethlyationValuesContainer], sample_prefix_readnames=False,
+    sample_met_containers: Dict[str, MethlyationValuesContainer],
+    sample_prefix_readnames=False,
 ) -> SparseMethylationMatrixContainer:
     """Creates a SparseMethylationMatrixContainer from a dictionary of
     MethylationValuesContainer. Each key value pair represents one
@@ -84,7 +85,11 @@ def create_sparse_matrix_from_samples(
     # Create sparse matrix
     met_matrix = sp.csc_matrix((sparse_data, (sparse_x, sparse_y)))
     return SparseMethylationMatrixContainer(
-        met_matrix, read_names, genomic_ranges[:, 0], genomic_ranges[:, 1], read_samples=sample_assignment,
+        met_matrix,
+        read_names,
+        genomic_ranges[:, 0],
+        genomic_ranges[:, 1],
+        read_samples=sample_assignment,
     )
 
 
@@ -224,7 +229,11 @@ class MethlyationValuesContainer:
 
         met_matrix = sp.csc_matrix((sparse_data, (sparse_x, sparse_y)))
         return SparseMethylationMatrixContainer(
-            met_matrix, read_names, genomic_ranges[:, 0], genomic_ranges[:, 1], read_samples=read_samples,
+            met_matrix,
+            read_names,
+            genomic_ranges[:, 0],
+            genomic_ranges[:, 1],
+            read_samples=read_samples,
         )
 
 
@@ -476,17 +485,23 @@ class MetH5File:
 
             self.log.debug("Extended from %s to %s" % (old_shape, ds.shape))
 
-    def add_to_h5_file(self, cur_df: pd.DataFrame):
+    def add_to_h5_file(self, cur_df: pd.DataFrame, include_chromosomes: List[str] = None):
         """Add data from a pandas Dataframe which is the result of
         reading a nanopolish output file. Must at least contain the
         columns "chromosome", "read_name", "start", "end",
         "log_lik_ratio".
 
         :param cur_df: pandas dataframe containing nanopolish output
+        :param include_chromosomes: List of chromosome names to be included. Recommended
+        if your mapping contains lots of alternative contigs that you don't plan to use
+        downstream anyways. Can greatly improve performance. If None, all chromosomes are included.
+        Default: None
         """
         main_group = self.h5_fp.require_group("chromosomes")
 
         for chrom in set(cur_df["chromosome"]):
+            if include_chromosomes is not None and chrom not in include_chromosomes:
+                continue
             self.log.debug("Adding sites from chromosome %s to h5 file" % chrom)
 
             chrom_calls = cur_df.loc[cur_df["chromosome"] == chrom]
@@ -539,14 +554,18 @@ class MetH5File:
             chrom_group["llr"][:] = np.array(chrom_group["llr"])[sort_order]
             chrom_group["read_name"][:] = np.array(chrom_group["read_name"])[sort_order]
 
-    def parse_and_add_nanopolish_file(self, nanopolish_file: Union[str, Path]):
+    def parse_and_add_nanopolish_file(self, nanopolish_file: Union[str, Path], **kwargs):
         """Reads nanopolish output file and appends data to the Meth5
         file.
 
         :param nanopolish_file: Path to nanopolish file
+        :param include_chromosomes: List of chromosome names to be included. Recommended
+        if your mapping contains lots of alternative contigs that you don't plan to use
+        downstream anyways. Can greatly improve performance. If None, all chromosomes are included.
+        Default: None
         """
         cur_df = pd.read_csv(nanopolish_file, sep="\t", dtype={"chromosome": str})
-        self.add_to_h5_file(cur_df)
+        self.add_to_h5_file(cur_df, **kwargs)
 
     def get_chromosomes(self) -> List[str]:
         """
@@ -608,7 +627,12 @@ class MetH5File:
                     continue
 
             rg_assignment = [map.get(read.decode(), -1) for read in chr_g["read_name"][:]]
-            rg_ds = rg_g.require_dataset(name=read_group_key, dtype=int, shape=(len(rg_assignment),), maxshape=(None,),)
+            rg_ds = rg_g.require_dataset(
+                name=read_group_key,
+                dtype=int,
+                shape=(len(rg_assignment),),
+                maxshape=(None,),
+            )
             rg_ds[:] = rg_assignment
 
             rg_ds.attrs.clear()
