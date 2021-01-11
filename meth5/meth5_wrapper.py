@@ -5,7 +5,7 @@ import pandas as pd
 import scipy.sparse as sp
 import logging
 from pathlib import Path
-from typing import Union, List, Dict, IO, Tuple
+from typing import Union, List, Dict, IO, Tuple, Any
 from types import FunctionType
 
 from meth5.sparse_matrix import SparseMethylationMatrixContainer
@@ -168,10 +168,11 @@ class MethlyationValuesContainer:
         Note that ranges with same same startpoint but different endpoint will
         be considered as two separate ranges
 
-        :param aggregation_fun: Tuple consisting of:
+        :param aggregation_fun: Function that takes a numpy array of llrs and returns the aggregate
+
+        :return: Tuple consisting of:
           * aggregated llrs
           * ranges for each aggregation
-        :return:
         """
         llrs = self.get_llrs()
         ranges = self.get_ranges()
@@ -189,6 +190,28 @@ class MethlyationValuesContainer:
     def get_llr_site_median(self):
         """Calls get_llr_site_aggregate with np.median as an aggregation function"""
         return self.get_llr_site_aggregate(np.median)
+
+    def get_llr_read_aggregate(self, aggregation_fun: FunctionType) -> Dict[str, Any]:
+        """Computes per-read an aggregate of the LLR. The provided
+        aggregation function should take a numpy array and can return
+        any arbitrary aggregate. The return value is a numpy array
+        containing the aggregates for each unique genomic range.
+
+        Note that ranges with same same startpoint but different endpoint will
+        be considered as two separate ranges
+
+        :param aggregation_fun: Function that takes a numpy array of llrs and returns the aggregate
+
+        :return: Tuple consisting of:
+          * aggregation result
+          * ranges for each aggregation
+        """
+        llrs = self.get_llrs()
+        reads = self.get_read_names()
+        readset = set(reads)
+
+        aggregated_llrs = {read: aggregation_fun(llrs[reads == read]) for read in readset}
+        return aggregated_llrs
 
     def to_sparse_methylation_matrix(self, read_groups_key: str = None) -> SparseMethylationMatrixContainer:
         """Creates a SparseMethylationMatrixContainer from the values in
