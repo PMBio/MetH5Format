@@ -424,7 +424,7 @@ class ChromosomeContainer:
 
         if len(chunk_indices) == 0:
             # If no chunk contains these values
-            return None
+            return MethlyationValuesContainer(self, 0, 0)
 
         start_chunk = chunk_indices[0]
         end_chunk = chunk_indices[-1]
