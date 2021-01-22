@@ -403,6 +403,13 @@ class ChromosomeContainer:
             self.h5group.create_dataset(name="chunk_ranges", data=index, dtype=int, maxshape=(None, 2))
         self.h5group.attrs["chunk_size"] = self.chunk_size
 
+    def get_all_values(self) -> MethlyationValuesContainer:
+        """Returns a MethlyationValuesContainer providing access to all sites on the chromosome
+        Very inefficient and therefore not recommended. Chunk-based operations are recommended.
+        :return: MethlyationValuesContainer
+        """
+        return MethlyationValuesContainer(self, 0, self.h5group["range"].shape[0])
+
     def get_values_in_range(self, genomic_start: int, genomic_end: int) -> MethlyationValuesContainer:
         """Returns a MethlyationValuesContainer providing access to the
         specified genomic region.
