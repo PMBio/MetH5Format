@@ -529,7 +529,7 @@ class MetH5File:
         """
         main_group = self.h5_fp.require_group("chromosomes")
 
-        for chrom in set(cur_df["chromosome"]):
+        for chrom in set(cur_df["chromosome"].astype("str")):
             if include_chromosomes is not None and chrom not in include_chromosomes:
                 continue
             self.log.debug("Adding sites from chromosome %s to h5 file" % chrom)

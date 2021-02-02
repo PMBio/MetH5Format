@@ -186,7 +186,7 @@ class SparseMethylationMatrixContainer:
         any data
         :return: new SparseMethylationMatrixContainer object
         """
-        idx = [read in allowed_reads for read in self.read_names]
+        idx = np.array([read in allowed_reads for read in self.read_names])
         return self.get_submatrix_from_read_mask(idx, compact=compact)
 
     def get_genomic_region(self) -> Tuple[int, int]:
