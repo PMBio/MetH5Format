@@ -660,4 +660,8 @@ class MetH5File:
 
             rg_ds.attrs.clear()
             if labels is not None:
+                # TODO: Find a nicer way to do this:
+                # I originally intended to store the int keys, but hdf5 doesnt support
+                # integers as keys in attributes dictionary....
+                labels = {str(k):v for k,v in labels.items()}
                 rg_ds.attrs.update(labels)
