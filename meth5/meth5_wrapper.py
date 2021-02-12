@@ -225,7 +225,7 @@ class MethlyationValuesContainer:
 
         :param read_groups_key: The key in the Meth5 file under which the read groups
         (samples) can be found
-        :return: SparseMethylationMatrixContainer
+        :return: SparseMethylationMatrixContainer or None
         """
         # Define canonical order of read names
         read_names = [r.decode() for r in self.get_read_names_unique()]
@@ -249,8 +249,11 @@ class MethlyationValuesContainer:
             read_samples = np.array([read_samples_dict[r] for r in read_names])
         else:
             read_samples = None
-
-        met_matrix = sp.csc_matrix((sparse_data, (sparse_x, sparse_y)))
+            
+        """Note: It's important to provide "shape" in the constructor, in case
+        the matrix is empty. Otherwise the csc_matrix constructor will raise
+        an error for not being able to infer the dimensions of the matrix"""
+        met_matrix = sp.csc_matrix((sparse_data, (sparse_x, sparse_y)), shape=(len(read_names), len(genomic_ranges)))
         return SparseMethylationMatrixContainer(
             met_matrix,
             read_names,
