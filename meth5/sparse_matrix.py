@@ -126,7 +126,7 @@ class SparseMethylationMatrixContainer:
         start = self.coord_to_index_dict[start_base]
         end = self.coord_to_index_dict[end_base]
         return self.get_submatrix(start, end, compact=compact)
-    
+
     def get_submatrix_from_genomic_locations_mask(
         self, allowed_sites: np.ndarray(), compact: bool = True
     ) -> SparseMethylationMatrixContainer:
@@ -142,13 +142,14 @@ class SparseMethylationMatrixContainer:
         any data
         :return: new SparseMethylationMatrixContainer object
         """
-    
+
         sub_met_matrix = self.met_matrix[:, allowed_sites]
         sub_genomic_coord = self.genomic_coord[allowed_sites]
         sub_genomic_coord_end = self.genomic_coord_end[allowed_sites]
-    
-        ret = SparseMethylationMatrixContainer(sub_met_matrix, self.read_names, sub_genomic_coord,
-            sub_genomic_coord_end, read_samples=self.read_samples, )
+
+        ret = SparseMethylationMatrixContainer(
+            sub_met_matrix, self.read_names, sub_genomic_coord, sub_genomic_coord_end, read_samples=self.read_samples,
+        )
         if compact:
             ret._compact()
         return ret
@@ -245,3 +246,59 @@ class SparseMethylationMatrixContainer:
         return SparseMethylationMatrixContainer(
             met_matrix, read_names, np.array(coords), np.array(coords_end), read_samples
         )
+
+    def join(self: SparseMethylationMatrixContainer, other: SparseMethylationMatrixContainer,
+             set_sample_based_on_sharedness=False, ):
+        """
+        HIGHLY EXPERIMENTAL: Join another matrix along the same read names. This can allow visualization
+        of chimeric aliognments. The new matrix returned will be on a new - ficticious - coordinate system based
+        on the genomic coordinates of the first matrix.
+
+        The coordinates of the second matrix will be offset as such:
+            y' = max(x) + (y - min(y))
+        where "x" are the coordinates of the first matrix and "y" the coordinates of the second matrix
+
+        :param other: other matrix
+        :return: a new SparseMethylationMatrix
+        """
+        reads_only_other = set(other.read_names).difference(set(self.read_names))
+    
+        # new_coo = sp.coo_matrix((len(reads), len(self.genomic_coord) + len(other.genomic_coord)))
+        self_coo = self.met_matrix.tocoo()
+        other_coo = other.met_matrix.tocoo()
+        self_read_names = list(self.read_names)
+        other_read_names = list(other.read_names)
+        read_names = [r for r in self_read_names] + [r for r in other_read_names if r in reads_only_other]
+        read_names_other_map = {other_read_names.index(r): read_names.index(r) for r in other_read_names}
+        new_other_coo_row = [read_names_other_map[r] for r in other_coo.row]
+    
+        new_other_coo_col = other_coo.col + np.max(self_coo.col) + 1
+    
+        new_other_genomic_coord = other.genomic_coord - other.genomic_coord[0] + self.genomic_coord_end[-1]
+        new_other_genomic_coord_end = other.genomic_coord_end - other.genomic_coord + new_other_genomic_coord
+    
+        new_coo_row = np.concatenate((self_coo.row, new_other_coo_row))
+        new_coo_col = np.concatenate((self_coo.col, new_other_coo_col))
+        new_coo_data = np.concatenate((self_coo.data, other_coo.data))
+    
+        new_genomic_coord = np.concatenate((self.genomic_coord, new_other_genomic_coord))
+    
+        new_genomic_coord_end = np.concatenate((self.genomic_coord_end, new_other_genomic_coord_end))
+    
+        new_met_matrix = sp.coo_matrix((new_coo_data, (new_coo_row, new_coo_col)))
+    
+        sharedness = ["L" if r not in other_read_names else "R" if r not in self_read_names else "B" for r in
+                      read_names]
+        if self.read_samples is not None:
+            samples = np.array(
+                [s for s in self.read_samples] + [s for r, s in zip(other.read_names, other.read_samples) if
+                                                  r in reads_only_other])
+            if set_sample_based_on_sharedness:
+                samples = np.array([f"{s}_{x}" for s, x in zip(samples, sharedness)])
+        elif set_sample_based_on_sharedness:
+            samples = np.array(sharedness)
+    
+        new_met_matrix = SparseMethylationMatrixContainer(sp.csc_matrix(new_met_matrix), read_names, new_genomic_coord,
+                                                          new_genomic_coord_end, read_samples=samples)
+    
+        return new_met_matrix
