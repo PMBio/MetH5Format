@@ -20,7 +20,7 @@ def _unique_genomic_range(genomic_ranges: np.ndarray) -> np.ndarray:
     """
     diff = np.ones_like(genomic_ranges)
     diff[1:] = genomic_ranges[1:] - genomic_ranges[:-1]
-    idx = diff[:, 0].nonzero()[0] & diff[:, 1].nonzero()[0]
+    idx = sorted(list(set(diff[:, 0].nonzero()[0]).intersection(set(diff[:, 1].nonzero()[0]))))
     return genomic_ranges[idx, :]
 
 
