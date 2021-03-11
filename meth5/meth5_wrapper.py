@@ -389,6 +389,7 @@ class ChromosomeContainer:
 
         :param force_update: Whether an existing index should be overwritten
         """
+        
         if "chunk_ranges" in self.h5group.keys() and not force_update:
             return
 
@@ -468,7 +469,7 @@ class ChromosomeContainer:
 class MetH5File:
     """Main wrapper for Meth5 files."""
 
-    def __init__(self, h5filepath: Union[str, Path, IO], mode: str = "r", chunk_size=int(10e5)):
+    def __init__(self, h5filepath: Union[str, Path, IO], mode: str = "r", chunk_size=int(10e5), compression="gzip"):
         """Initializes Meth5File and directly opens the file pointer.
 
         :param h5filepath: Path to Meth5 file or IO object providing access to it
@@ -482,8 +483,9 @@ class MetH5File:
         self.h5_fp: h5py.File = None
         self.chrom_container_cache = {}
         self.log = logging.getLogger("NET:MetH5")
+        self.compression = compression
         self.h5_fp = h5py.File(self.h5filepath, mode=self.mode)
-
+        
     def __enter__(self):
         return self
 
@@ -491,7 +493,27 @@ class MetH5File:
         """Close HDF file pointer."""
         self.h5_fp.close()
 
+    def resort_chromosome(self, chrom:str):
+        """Forces resorting values of one chromosome by range"""
+        chrom_group = self.h5_fp["chromosomes"][chrom]
+        sort_order = np.argsort(chrom_group["range"][:, 0], kind="mergesort")
+        logging.debug("Re-sorting h5 entries for chromosome %s" % chrom)
+        chrom_group["range"][:] = np.array(chrom_group["range"])[sort_order]
+        chrom_group["llr"][:] = np.array(chrom_group["llr"])[sort_order]
+        chrom_group["read_name"][:] = np.array(chrom_group["read_name"])[sort_order]
+        chrom_group.attrs["is_sorted"] = True
+
+    def resort_unsorted_chromosomes(self):
+        """Resorts only those chromosomes that are unsorted (have the "is_sorted" attribute set to False)"""
+        for chrom in self.get_chromosomes():
+            if not self.h5_fp["chromosomes"][chrom].attrs.get("is_sorted", True):
+                self.resort_chromosome(chrom)
+
     def __exit__(self, exittype, exitvalue, traceback):
+        try:
+            self.resort_unsorted_chromosomes()
+        except:
+            pass
         self.close()
 
     def _create_or_extend(self, parent_group: h5py.Group, name: str, shape: Tuple, data: np.ndarray, **kwargs):
@@ -518,7 +540,8 @@ class MetH5File:
 
             self.log.debug("Extended from %s to %s" % (old_shape, ds.shape))
 
-    def add_to_h5_file(self, cur_df: pd.DataFrame, include_chromosomes: List[str] = None):
+    def add_to_h5_file(self, cur_df: pd.DataFrame, include_chromosomes: List[str] = None,
+                       postpone_sorting_until_close=False):
         """Add data from a pandas Dataframe which is the result of
         reading a nanopolish output file. Must at least contain the
         columns "chromosome", "read_name", "start", "end",
@@ -538,6 +561,7 @@ class MetH5File:
             self.log.debug("Adding sites from chromosome %s to h5 file" % chrom)
 
             chrom_calls = cur_df.loc[cur_df["chromosome"] == chrom]
+            print(f"Adding {chrom_calls.shape[0]} from chrom {chrom}")
             n = chrom_calls.shape[0]
             read_names = [read.encode() for read in chrom_calls["read_name"]]
             read_name_len = len(read_names[0])
@@ -551,7 +575,7 @@ class MetH5File:
                 shape=(n, 2),
                 dtype=int,
                 data=chrom_calls[["start", "end"]],
-                compression="gzip",
+                compression=self.compression,
                 chunks=(self.chunk_size, 2),
                 maxshape=(None, 2),
             )
@@ -562,7 +586,7 @@ class MetH5File:
                 shape=(n,),
                 dtype=float,
                 data=chrom_calls["log_lik_ratio"],
-                compression="gzip",
+                compression=self.compression,
                 chunks=(self.chunk_size,),
                 maxshape=(None,),
             )
@@ -574,20 +598,19 @@ class MetH5File:
                 shape=(n,),
                 dtype="S%d" % read_name_len,
                 data=read_names,
-                compression="gzip",
+                compression=self.compression,
                 chunks=(self.chunk_size,),
                 maxshape=(None,),
             )
 
             # TODO think of a way to do this that doesn't require loading one entire
             # dataset into memory
-            sort_order = np.argsort(chrom_group["range"][:, 0], kind="mergesort")
-            logging.debug("Re-sorting h5 entries for chromosome %s" % chrom)
-            chrom_group["range"][:] = np.array(chrom_group["range"])[sort_order]
-            chrom_group["llr"][:] = np.array(chrom_group["llr"])[sort_order]
-            chrom_group["read_name"][:] = np.array(chrom_group["read_name"])[sort_order]
+            if postpone_sorting_until_close:
+                chrom_group.attrs["is_sorted"] = False
+            else:
+                self.resort_chromosome(chrom)
 
-    def parse_and_add_nanopolish_file(self, nanopolish_file: Union[str, Path], **kwargs):
+    def parse_and_add_nanopolish_file(self, nanopolish_file: Union[str, Path], read_chunk_lines = 1e6, **kwargs):
         """Reads nanopolish output file and appends data to the Meth5
         file.
 
@@ -597,8 +620,9 @@ class MetH5File:
         downstream anyways. Can greatly improve performance. If None, all chromosomes are included.
         Default: None
         """
-        cur_df = pd.read_csv(nanopolish_file, sep="\t", dtype={"chromosome": str})
-        self.add_to_h5_file(cur_df, **kwargs)
+        cur_df = pd.read_csv(nanopolish_file, sep="\t", dtype={"chromosome": str}, chunksize = read_chunk_lines)
+        for df_chunk in cur_df:
+            self.add_to_h5_file(df_chunk, **kwargs)
 
     def get_chromosomes(self) -> List[str]:
         """
@@ -614,8 +638,14 @@ class MetH5File:
         :param chromosome: the chromosome name
         :return: ChromosomeContainer object
         """
+        
         if chromosome not in self.h5_fp["chromosomes"].keys():
             return None
+        
+        if not self.h5_fp["chromosomes"][chromosome].attrs.get("is_sorted", True):
+            raise ValueError("MetH5 file has been manipulated and sorting has been postponed. Need to resort before"
+                             "accessing values.")
+        
         if chromosome in self.chrom_container_cache.keys():
             return self.chrom_container_cache[chromosome]
         else:
@@ -624,10 +654,11 @@ class MetH5File:
             return ret
 
     def create_chunk_index(self, *args, **kwargs):
-        """Create chunk index for each chromosome.
+        """Create chunk index for each chromosome. Also performs resorting if necessary.
 
         See documentation of ChromosomeContainer.create_chunk_index
         """
+        self.resort_unsorted_chromosomes()
         for chromosome in self.get_chromosomes():
             self[chromosome].create_chunk_index(*args, **kwargs)
 
