@@ -24,9 +24,12 @@ def _unique_genomic_range(genomic_ranges: np.ndarray) -> np.ndarray:
     return genomic_ranges[idx, :]
 
 
+def compute_betascore(llrs, llr_threshold=2):
+    num_llrs = (np.abs(llrs) > llr_threshold).sum()
+    return (llrs > llr_threshold).sum() / num_llrs if num_llrs > 0 else np.nan
+
 def create_sparse_matrix_from_samples(
-    sample_met_containers: Dict[str, MethlyationValuesContainer],
-    sample_prefix_readnames=False,
+    sample_met_containers: Dict[str, MethlyationValuesContainer], sample_prefix_readnames=False,
 ) -> SparseMethylationMatrixContainer:
     """Creates a SparseMethylationMatrixContainer from a dictionary of
     MethylationValuesContainer. Each key value pair represents one
@@ -85,11 +88,7 @@ def create_sparse_matrix_from_samples(
     # Create sparse matrix
     met_matrix = sp.csc_matrix((sparse_data, (sparse_x, sparse_y)))
     return SparseMethylationMatrixContainer(
-        met_matrix,
-        read_names,
-        genomic_ranges[:, 0],
-        genomic_ranges[:, 1],
-        read_samples=sample_assignment,
+        met_matrix, read_names, genomic_ranges[:, 0], genomic_ranges[:, 1], read_samples=sample_assignment,
     )
 
 
@@ -159,6 +158,17 @@ class MethlyationValuesContainer:
         """
         return self.chromosome.h5group["read_groups"][group_key][self.start : self.end]
 
+    def __compute_llr_site_aggregate(self, ranges, llrs, aggregation_fun):
+        # Takes advantage of ranges being sorted
+        range_diff = (np.diff(ranges[:, 0]) != 0) | (np.diff(ranges[:, 1]) != 0)
+        # Changepoints where it goes from one range to the next
+        range_cp = np.argwhere(range_diff).flatten() + 1
+        range_start = [0, *range_cp]
+        range_end = [*range_cp, llrs.shape[0]]
+        # Calls aggregation function once for each unique range
+        aggregated_llrs = np.array([aggregation_fun(llrs[rs:re]) for rs, re in zip(range_start, range_end)])
+        return aggregated_llrs, ranges[range_start, :]
+
     def get_llr_site_aggregate(self, aggregation_fun: FunctionType) -> Tuple[np.ndarray, np.ndarray]:
         """Computes per-site an aggregate of the LLR. The provided
         aggregation function should take a numpy array and can return
@@ -177,20 +187,16 @@ class MethlyationValuesContainer:
         llrs = self.get_llrs()
         ranges = self.get_ranges()
 
-        # Takes advantage of ranges being sorted
-        range_diff = (np.diff(ranges[:, 0]) != 0) | (np.diff(ranges[:, 1]) != 0)
-        # Changepoints where it goes from one range to the next
-        range_cp = np.argwhere(range_diff).flatten() + 1
-        range_start = [0, *range_cp]
-        range_end = [*range_cp, llrs.shape[0]]
-        # Calls aggregation function once for each unique range
-        aggregated_llrs = np.array([aggregation_fun(llrs[rs:re]) for rs, re in zip(range_start, range_end)])
-        return aggregated_llrs, ranges[range_start, :]
+        return __compute_llr_site_aggregate(ranges, llrs, aggregation_fun)
 
     def get_llr_site_median(self):
         """Calls get_llr_site_aggregate with np.median as an aggregation function"""
         return self.get_llr_site_aggregate(np.median)
 
+    def get_llr_site_rate(self, llr_threshold=2):
+        """Calls get_llr_site_aggregate computing the methylation betascore"""
+        return self.get_llr_site_aggregate(lambda llrs: compute_betascore(llrs, llr_threshold))
+    
     def get_llr_read_aggregate(self, aggregation_fun: FunctionType) -> Dict[str, Any]:
         """Computes per-read an aggregate of the LLR. The provided
         aggregation function should take a numpy array and can return
@@ -212,6 +218,39 @@ class MethlyationValuesContainer:
 
         aggregated_llrs = {read: aggregation_fun(llrs[reads == read]) for read in readset}
         return aggregated_llrs
+
+
+    def get_llr_site_readgroup_aggregate(
+        self, group_key: str, aggregation_fun: FunctionType
+    ) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
+        """For each read group, computes a per-site aggregate of the LLR. The provided
+        aggregation function should take a numpy array and can return
+        any arbitrary aggregate. The return value is a dictionary with the key
+        being each read group and the value being a tuple with the numpy arrays
+        containing the aggregates for each range and in second position the genomic ranges
+
+        Note that ranges with same same startpoint but different endpoint will
+        be considered as two separate ranges
+
+        :param group_key: The group key under which the grouping has been stored
+        :param aggregation_fun: Function that takes a numpy array of llrs and returns the aggregate
+
+        :return: {readgroup_key: (aggregated llrs, ranges for each aggregation)
+        """
+        all_llrs = self.get_llrs()
+        all_ranges = self.get_ranges()
+        all_groups = self.get_read_groups(group_key)
+
+        return {
+            group: self.__compute_llr_site_aggregate(
+                all_ranges[all_groups == group], all_llrs[all_groups == group], aggregation_fun
+            )
+            for group in set(all_groups)
+        }
+
+    def get_llr_site_readgroup_rate(self, group_key: str, llr_threshold: float = 2):
+        """Calls get_llr_site_readgroup_aggregate computing the methylation betascore"""
+        return self.get_llr_site_readgroup_aggregate(group_key, lambda llrs: compute_betascore(llrs, llr_threshold))
 
     def to_sparse_methylation_matrix(self, read_groups_key: str = None) -> SparseMethylationMatrixContainer:
         """Creates a SparseMethylationMatrixContainer from the values in
@@ -249,17 +288,13 @@ class MethlyationValuesContainer:
             read_samples = np.array([read_samples_dict[r] for r in read_names])
         else:
             read_samples = None
-            
+
         """Note: It's important to provide "shape" in the constructor, in case
         the matrix is empty. Otherwise the csc_matrix constructor will raise
         an error for not being able to infer the dimensions of the matrix"""
         met_matrix = sp.csc_matrix((sparse_data, (sparse_x, sparse_y)), shape=(len(read_names), len(genomic_ranges)))
         return SparseMethylationMatrixContainer(
-            met_matrix,
-            read_names,
-            genomic_ranges[:, 0],
-            genomic_ranges[:, 1],
-            read_samples=read_samples,
+            met_matrix, read_names, genomic_ranges[:, 0], genomic_ranges[:, 1], read_samples=read_samples,
         )
 
 
@@ -389,7 +424,7 @@ class ChromosomeContainer:
 
         :param force_update: Whether an existing index should be overwritten
         """
-        
+
         if "chunk_ranges" in self.h5group.keys() and not force_update:
             return
 
@@ -485,7 +520,7 @@ class MetH5File:
         self.log = logging.getLogger("NET:MetH5")
         self.compression = compression
         self.h5_fp = h5py.File(self.h5filepath, mode=self.mode)
-        
+
     def __enter__(self):
         return self
 
@@ -493,7 +528,7 @@ class MetH5File:
         """Close HDF file pointer."""
         self.h5_fp.close()
 
-    def resort_chromosome(self, chrom:str):
+    def resort_chromosome(self, chrom: str):
         """Forces resorting values of one chromosome by range"""
         chrom_group = self.h5_fp["chromosomes"][chrom]
         sort_order = np.argsort(chrom_group["range"][:, 0], kind="mergesort")
@@ -540,8 +575,9 @@ class MetH5File:
 
             self.log.debug("Extended from %s to %s" % (old_shape, ds.shape))
 
-    def add_to_h5_file(self, cur_df: pd.DataFrame, include_chromosomes: List[str] = None,
-                       postpone_sorting_until_close=False):
+    def add_to_h5_file(
+        self, cur_df: pd.DataFrame, include_chromosomes: List[str] = None, postpone_sorting_until_close=False
+    ):
         """Add data from a pandas Dataframe which is the result of
         reading a nanopolish output file. Must at least contain the
         columns "chromosome", "read_name", "start", "end",
@@ -610,7 +646,7 @@ class MetH5File:
             else:
                 self.resort_chromosome(chrom)
 
-    def parse_and_add_nanopolish_file(self, nanopolish_file: Union[str, Path], read_chunk_lines = 1e6, **kwargs):
+    def parse_and_add_nanopolish_file(self, nanopolish_file: Union[str, Path], read_chunk_lines=1e6, **kwargs):
         """Reads nanopolish output file and appends data to the Meth5
         file.
 
@@ -620,7 +656,7 @@ class MetH5File:
         downstream anyways. Can greatly improve performance. If None, all chromosomes are included.
         Default: None
         """
-        cur_df = pd.read_csv(nanopolish_file, sep="\t", dtype={"chromosome": str}, chunksize = read_chunk_lines)
+        cur_df = pd.read_csv(nanopolish_file, sep="\t", dtype={"chromosome": str}, chunksize=read_chunk_lines)
         for df_chunk in cur_df:
             self.add_to_h5_file(df_chunk, **kwargs)
 
@@ -638,14 +674,16 @@ class MetH5File:
         :param chromosome: the chromosome name
         :return: ChromosomeContainer object
         """
-        
+
         if chromosome not in self.h5_fp["chromosomes"].keys():
             return None
-        
+
         if not self.h5_fp["chromosomes"][chromosome].attrs.get("is_sorted", True):
-            raise ValueError("MetH5 file has been manipulated and sorting has been postponed. Need to resort before"
-                             "accessing values.")
-        
+            raise ValueError(
+                "MetH5 file has been manipulated and sorting has been postponed. Need to resort before"
+                "accessing values."
+            )
+
         if chromosome in self.chrom_container_cache.keys():
             return self.chrom_container_cache[chromosome]
         else:
@@ -691,12 +729,7 @@ class MetH5File:
                     continue
 
             rg_assignment = [map.get(read.decode(), -1) for read in chr_g["read_name"][:]]
-            rg_ds = rg_g.require_dataset(
-                name=read_group_key,
-                dtype=int,
-                shape=(len(rg_assignment),),
-                maxshape=(None,),
-            )
+            rg_ds = rg_g.require_dataset(name=read_group_key, dtype=int, shape=(len(rg_assignment),), maxshape=(None,),)
             rg_ds[:] = rg_assignment
 
             rg_ds.attrs.clear()
@@ -704,5 +737,5 @@ class MetH5File:
                 # TODO: Find a nicer way to do this:
                 # I originally intended to store the int keys, but hdf5 doesnt support
                 # integers as keys in attributes dictionary....
-                labels = {str(k):v for k,v in labels.items()}
+                labels = {str(k): v for k, v in labels.items()}
                 rg_ds.attrs.update(labels)
