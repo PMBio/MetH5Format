@@ -187,7 +187,7 @@ class MethlyationValuesContainer:
         llrs = self.get_llrs()
         ranges = self.get_ranges()
 
-        return __compute_llr_site_aggregate(ranges, llrs, aggregation_fun)
+        return self.__compute_llr_site_aggregate(ranges, llrs, aggregation_fun)
 
     def get_llr_site_median(self):
         """Calls get_llr_site_aggregate with np.median as an aggregation function"""
