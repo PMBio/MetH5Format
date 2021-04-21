@@ -116,11 +116,16 @@ class MethlyationValuesContainer:
         """
         :return: Unique name of reads intersecting with this region
         """
-        read_ids_ds = self.chromosome.h5group["read_id"][self.start : self.end]
-        read_ids_unique, idx = np.unique(read_ids_ds, return_index=True)
-        read_ids_unique, idx = np.unique(read_name_ds, return_index=True)
-        read_ids_unique = read_ids_unique[np.argsort(idx)]
-        return self.chromosome.parent_meth5._decode_read_names(read_ids_unique)
+        if "read_id" in self.chromosome.h5group:
+            read_ids_ds = self.chromosome.h5group["read_id"][self.start : self.end]
+            read_ids_unique, idx = np.unique(read_ids_ds, return_index=True)
+            read_ids_unique = read_ids_unique[np.argsort(idx)]
+            return self.chromosome.parent_meth5._decode_read_names(read_ids_unique)
+        else:
+            read_names_ds = self.chromosome.h5group["read_name"][self.start: self.end]
+            read_names_unique, idx = np.unique(read_names_ds, return_index=True)
+            read_names_unique = read_names_unique[np.argsort(idx)]
+            return read_names_unique
     
     def get_ranges_unique(self) -> np.ndarray:
         """
@@ -526,12 +531,14 @@ class ChromosomeContainer:
 class MetH5File:
     """Main wrapper for Meth5 files."""
     
-    def __init__(self, h5filepath: Union[str, Path, IO], mode: str = "r", chunk_size=int(1e6), compression="gzip"):
+    def __init__(self, h5filepath: Union[str, Path, IO], mode: str = "r", chunk_size=int(1e6), compression="gzip", max_calls:Dict[str,int]=None):
         """Initializes Meth5File and directly opens the file pointer.
 
         :param h5filepath: Path to Meth5 file or IO object providing access to it
         :param mode: h5py.File mode (typically "r", "w", or "a")
         :param chunk_size: chunk size to be used for HDF5 dataframes as well as for
+        :param max_calls: only applies if mode is "w". Number of calls to be written - greatly
+        improves performance if provided, as the datastructures can be initialized in the proper size
         indexing and searching
         """
         self.h5filepath = h5filepath
@@ -541,6 +548,7 @@ class MetH5File:
         self.chrom_container_cache = {}
         self.log = logging.getLogger("NET:MetH5")
         self.compression = compression
+        self.max_calls = max_calls if max_calls is not None else {}
         self.h5_fp = h5py.File(self.h5filepath, mode=self.mode)
     
     def __enter__(self):
@@ -606,21 +614,22 @@ class MetH5File:
         return [ds[i].decode() for i in read_ids]
     
     def _encode_read_names(self, read_names: List[str]):
+        if len(read_names) == 0:
+            return []
         read_name_len = len(read_names[0])
         assert all([len(read) for read in read_names])
         
         main_group = self.h5_fp.require_group("reads")
-        
+
         if "read_names_mapping" in main_group.keys():
-            read_names_mapping_ds = main_group["read_names_mapping"]
+            read_names_mapping_ds = main_group["read_names_mapping"][:]
             num_existing = len(read_names_mapping_ds)
             read_name_dict = {read_name: i for i, read_name in enumerate(read_names_mapping_ds)}
         else:
             read_name_dict = {}
             num_existing = 0
-        
+
         read_names = np.array(read_names)
-        
         read_names_to_add_to_h5 = []
         read_ids = []
         next_id = num_existing
@@ -633,6 +642,8 @@ class MetH5File:
                 read_names_to_add_to_h5.append(read_name)
                 next_id += 1
         
+        
+        
         if len(read_names_to_add_to_h5) > 0:
             # That is, we added new reads
             if "read_names_mapping" in main_group.keys():
@@ -643,7 +654,6 @@ class MetH5File:
                 read_names_mapping_ds = main_group.create_dataset(
                     name="read_names_mapping", data=read_names_to_add_to_h5, maxshape=(None,), compression=self.compression
                 )
-        
         return read_ids
     
     def add_to_h5_file(
@@ -661,19 +671,21 @@ class MetH5File:
         Default: None
         """
         main_group = self.h5_fp.require_group("chromosomes")
+        cur_df = cur_df.groupby("chromosome")
         
-        for chrom in set(cur_df["chromosome"].astype("str")):
+        for chrom in cur_df.groups.keys():
+            chrom_max_calls = self.max_calls.get(chrom, None)
             if include_chromosomes is not None and chrom not in include_chromosomes:
                 continue
             self.log.debug("Adding sites from chromosome %s to h5 file" % chrom)
             
-            chrom_calls = cur_df.loc[cur_df["chromosome"] == chrom]
+            chrom_calls = cur_df.get_group(chrom)
             print(f"Adding {chrom_calls.shape[0]} from chrom {chrom}")
             n = chrom_calls.shape[0]
             read_names = [read.encode() for read in chrom_calls["read_name"]]
             
+            chrom_chunk_size = min(self.chunk_size, n)
             chrom_group = main_group.require_group(chrom)
-            
             self._create_or_extend(
                 parent_group=chrom_group,
                 name="range",
@@ -681,8 +693,8 @@ class MetH5File:
                 dtype=int,
                 data=chrom_calls[["start", "end"]],
                 compression=self.compression,
-                chunks=(self.chunk_size, 2),
-                maxshape=(None, 2),
+                chunks=(chrom_chunk_size, 2),
+                maxshape=(chrom_max_calls, 2),
             )
             # TODO Add strand as a (bool) dataframe
             self._create_or_extend(
@@ -692,8 +704,8 @@ class MetH5File:
                 dtype=float,
                 data=chrom_calls["log_lik_ratio"],
                 compression=self.compression,
-                chunks=(self.chunk_size,),
-                maxshape=(None,),
+                chunks=(chrom_chunk_size,),
+                maxshape=(chrom_max_calls,),
             )
             
             read_ids = self._encode_read_names(read_names)
@@ -705,8 +717,8 @@ class MetH5File:
                 dtype=int,
                 data=read_ids,
                 compression=self.compression,
-                chunks=(self.chunk_size,),
-                maxshape=(None,),
+                chunks=(chrom_chunk_size,),
+                maxshape=(chrom_max_calls,),
             )
             
             # TODO think of a way to do this that doesn't require loading one entire
@@ -807,7 +819,6 @@ class MetH5File:
             name=read_group_key,
             dtype=int,
             shape=(len(rg_assignment),),
-            maxshape=(None,),
         )
         rg_ds[:] = rg_assignment
         
