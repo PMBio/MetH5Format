@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 from tempfile import TemporaryFile
-from meth5.meth5_wrapper import MetH5File, create_sparse_matrix_from_samples
+from meth5.meth5 import MetH5File, create_sparse_matrix_from_samples
 
 
 class TestMetH5Format(unittest.TestCase):

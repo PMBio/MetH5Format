@@ -1,0 +1,7 @@
+2021-05-04 12:46:46.832974	0.0.0	Initialise versipy history
+2021-05-04 16:01:08.562201	0.2.0.dev1	Versipy auto bump-up
+2021-05-04 16:14:26.817354	0.2.1.dev1	Versipy auto bump-up
+2021-05-04 16:15:20.837250	0.2.2.dev1	Versipy auto bump-up
+2021-05-04 16:28:50.379984	0.2.3.dev1	Versipy auto bump-up
+2021-05-04 17:00:00.655716	0.2.4.dev1	Versipy auto bump-up
+2021-05-04 17:00:25.481294	0.2.5.dev1	Versipy auto bump-up
