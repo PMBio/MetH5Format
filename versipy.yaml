@@ -1,0 +1,34 @@
+version:
+  major: 0
+  minor: 2
+  micro: 5
+  a: null
+  b: null
+  rc: null
+  post: null
+  dev: 1
+managed_values:
+  __package_name__: meth5
+  __package_description__: HDF5 based file format for storage, retrieval, and analysis
+    of modification predictions from Nanopore
+  __package_url__: https://github.com/snajder-r/meth5format
+  __author_name__: Rene Snajder
+  __author_email__: r.snajder@dkfz-heidelberg.de
+  __author_url__: https://github.com/snajder-r
+  __package_licence__: MIT
+  __package_licence_url__: https://opensource.org/licenses/MIT
+  __minimal_python__: '>=3.7'
+  __entry_point1__: meth5=meth5.__main__:main
+  __dependency1__: numpy>=1.19.2
+  __dependency2__: scipy==1.4.1
+  __dependency3__: pandas>=1.1.3
+  __dependency4__: h5py>=2.10.0
+  __classifiers_1__: 'Development Status :: 4 - Beta'
+  __classifiers_2__: 'Intended Audience :: Science/Research'
+  __classifiers_3__: 'Topic :: Scientific/Engineering :: Bio-Informatics'
+  __classifiers_4__: 'License :: OSI Approved :: MIT License'
+  __classifiers_5__: 'Programming Language :: Python :: 3'
+  __citation__: Rene Snajder. (2021, May 4). snajder-r/meth5format
+managed_files:
+  versipy_templates/setup.py: setup.py
+  versipy_templates/meta.yaml: meta.yaml
