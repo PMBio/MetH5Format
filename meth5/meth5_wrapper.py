@@ -677,10 +677,9 @@ class MetH5File:
             chrom_max_calls = self.max_calls.get(chrom, None)
             if include_chromosomes is not None and chrom not in include_chromosomes:
                 continue
-            self.log.debug("Adding sites from chromosome %s to h5 file" % chrom)
             
             chrom_calls = cur_df.get_group(chrom)
-            print(f"Adding {chrom_calls.shape[0]} from chrom {chrom}")
+            self.log.debug(f"Adding {chrom_calls.shape[0]}  sites from chromosome {chrom} to h5 file")
             n = chrom_calls.shape[0]
             read_names = [read.encode() for read in chrom_calls["read_name"]]
             
