@@ -56,7 +56,7 @@ def create_sparse_matrix_from_samples(
     
     read_names_dict = {
         s: [
-            s + r.decode() if sample_prefix_readnames else r.decode()
+            s + r if sample_prefix_readnames else r
             for r in sample_met_containers[s].get_read_names_unique()
         ]
         for s in samples
@@ -80,11 +80,11 @@ def create_sparse_matrix_from_samples(
     sparse_y = []
     for sample, llrs in sample_met_containers.items():
         range_ds = llrs.get_ranges()
-        read_name_ds = llrs.get_read_names()
+        read_name_list = llrs.get_read_names()
         
         llr_ds = llrs.get_llrs()
         sparse_data += list(llr_ds[:])
-        sparse_x += [read_dict[sample + r.decode() if sample_prefix_readnames else r.decode()] for r in read_name_ds[:]]
+        sparse_x += [read_dict[sample + r if sample_prefix_readnames else r] for r in read_name_list[:]]
         sparse_y += [coord_to_index_dict[gr[0]] for gr in range_ds[:]]
     
     # Create sparse matrix
@@ -150,7 +150,7 @@ class MethlyationValuesContainer:
         """
         return self.chromosome.h5group["llr"][self.start : self.end]
     
-    def get_read_names(self) -> np.ndarray:
+    def get_read_names(self) -> List[str]:
         """
         :return: Numpy array of shape (n) containing the read name for each
         methylation call
@@ -159,7 +159,7 @@ class MethlyationValuesContainer:
         if "read_id" in group.keys():
             return self.chromosome.parent_meth5._decode_read_names(group["read_id"][self.start : self.end])
         elif "read_name" in group.keys():
-            return group["read_name"][self.start : self.end]
+            return [r.decode() for r in group["read_name"][self.start : self.end]]
     
     def get_read_groups(self, group_key: str) -> np.ndarray:
         """The Meth5 file can store multiple different groupings of
@@ -209,7 +209,7 @@ class MethlyationValuesContainer:
         llrs = self.get_llrs()
         ranges = self.get_ranges()
         
-        return __compute_llr_site_aggregate(ranges, llrs, aggregation_fun)
+        return self.__compute_llr_site_aggregate(ranges, llrs, aggregation_fun)
     
     def get_llr_site_median(self):
         """Calls get_llr_site_aggregate with np.median as an aggregation function"""
@@ -288,7 +288,7 @@ class MethlyationValuesContainer:
         :return: SparseMethylationMatrixContainer or None
         """
         # Define canonical order of read names
-        read_names = [r.decode() for r in self.get_read_names_unique()]
+        read_names = [r for r in self.get_read_names_unique()]
         genomic_ranges = self.get_ranges_unique()
         
         # Assigns y coordinate in the matrix to a genomic position
@@ -297,15 +297,15 @@ class MethlyationValuesContainer:
         # Assigns x coordinate in the matrix to a read name
         read_dict = {read_names[i]: i for i in range(len(read_names))}
         
-        read_name_ds = self.get_read_names()
+        read_name_list = self.get_read_names()
         
         sparse_data = self.get_llrs()[:]
-        sparse_x = [read_dict[r.decode()] for r in read_name_ds]
+        sparse_x = [read_dict[r] for r in read_name_list]
         sparse_y = [coord_to_index_dict[p] for p in self.get_ranges()[:, 0]]
         
         if read_groups_key is not None:
             read_groups_ds = self.get_read_groups(read_groups_key)
-            read_samples_dict = {rn.decode(): rg for (rn, rg) in zip(read_name_ds[:], read_groups_ds[:])}
+            read_samples_dict = {rn: rg for (rn, rg) in zip(read_name_list[:], read_groups_ds[:])}
             read_samples = np.array([read_samples_dict[r] for r in read_names])
         else:
             read_samples = None
@@ -792,7 +792,7 @@ class MetH5File:
     def _get_read_groups(self, read_ids: List[int], read_group_key: str):
         rg_ds = self.h5_fp["reads"]["read_groups"][read_group_key]
         # Can't use complex indexing because h5py requires indexes in increasing order
-        return [rg_ds[id] for id in rg_ds[read_ids]]
+        return [rg_ds[id] for id in read_ids]
     
     def annotate_read_groups(
         self, read_group_key: str, map: Dict[str, int], labels: Dict[int, str] = None, exists_ok=False, overwrite=False
