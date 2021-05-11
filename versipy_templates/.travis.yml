@@ -3,14 +3,9 @@ language: python
 python: __minimal_python__
 branches:
   only:
-  - master
+  - main
+
+install:
+  - pip install meth5
 
 script: true
-
-deploy:
-  - provider: pages
-    skip_cleanup: true
-    github_token: "$GH_TOKEN"
-    local_dir: site
-    on:
-      branch: master
