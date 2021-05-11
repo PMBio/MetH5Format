@@ -6,3 +6,6 @@
 2021-05-04 17:00:00.655716	0.2.4.dev1	Versipy auto bump-up
 2021-05-04 17:00:25.481294	0.2.5.dev1	Versipy auto bump-up
 2021-05-10 12:18:20.138114	0.2.6.dev1	Versipy auto bump-up
+2021-05-10 14:45:55.563354	0.2.6.dev1	Versipy auto bump-up
+2021-05-10 14:47:04.584037	0.2.6.dev2	Versipy auto bump-up
+2021-05-10 14:49:18.885224	0.2.7	Versipy auto bump-up

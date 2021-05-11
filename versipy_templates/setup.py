@@ -18,7 +18,7 @@ setup(
     author="__author_name__",
     author_email="__author_email__",
     license="__package_licence__",
-    python_requires="__minimal_python__",
+    python_requires=">=__minimal_python__",
     classifiers=["__classifiers_1__", "__classifiers_2__", "__classifiers_3__", "__classifiers_4__", "__classifiers_5__"],
     install_requires=["__dependency1__", "__dependency2__", "__dependency3__", "__dependency4__"],
     packages=["__package_name__"],

@@ -1,12 +1,12 @@
 version:
   major: 0
   minor: 2
-  micro: 6
+  micro: 7
   a: null
   b: null
   rc: null
   post: null
-  dev: 1
+  dev: null
 managed_values:
   __package_name__: meth5
   __package_description__: HDF5 based file format for storage, retrieval, and analysis
@@ -17,7 +17,7 @@ managed_values:
   __author_url__: https://github.com/snajder-r
   __package_licence__: MIT
   __package_licence_url__: https://opensource.org/licenses/MIT
-  __minimal_python__: '>=3.7'
+  __minimal_python__: '3.7'
   __entry_point1__: meth5=meth5.__main__:main
   __dependency1__: numpy>=1.19.2
   __dependency2__: scipy==1.4.1
