@@ -55,10 +55,7 @@ def create_sparse_matrix_from_samples(
     samples = list(sample_met_containers.keys())
     
     read_names_dict = {
-        s: [
-            s + r if sample_prefix_readnames else r
-            for r in sample_met_containers[s].get_read_names_unique()
-        ]
+        s: [s + r if sample_prefix_readnames else r for r in sample_met_containers[s].get_read_names_unique()]
         for s in samples
     }
     genomic_ranges = {s: [r for r in sample_met_containers[s].get_ranges_unique()] for s in samples}
@@ -624,14 +621,14 @@ class MetH5File:
         if len(read_names) == 0:
             return []
         read_name_len = len(read_names[0])
-        assert all([len(read) for read in read_names])
+        # All read names have same length
+        assert all([len(read) == read_name_len for read in read_names])
         
         main_group = self.h5_fp.require_group("reads")
-        
         if "read_names_mapping" in main_group.keys():
-            read_names_mapping_ds = main_group["read_names_mapping"][:]
-            num_existing = len(read_names_mapping_ds)
-            read_name_dict = {read_name: i for i, read_name in enumerate(read_names_mapping_ds)}
+            read_names_mapping_ds = main_group["read_names_mapping"]
+            read_name_dict = {read_name.decode(): i for i, read_name in enumerate(read_names_mapping_ds[()])}
+            num_existing = len(read_name_dict)
         else:
             read_name_dict = {}
             num_existing = 0
@@ -646,21 +643,23 @@ class MetH5File:
             else:
                 read_ids.append(next_id)
                 read_name_dict[read_name] = next_id
-                read_names_to_add_to_h5.append(read_name)
+                read_names_to_add_to_h5.append(read_name.encode())
                 next_id += 1
         
         if len(read_names_to_add_to_h5) > 0:
             # That is, we added new reads
             if "read_names_mapping" in main_group.keys():
                 old_size = num_existing
+                
                 read_names_mapping_ds.resize((old_size + len(read_names_to_add_to_h5),))
                 read_names_mapping_ds[old_size:] = read_names_to_add_to_h5
             else:
                 read_names_mapping_ds = main_group.create_dataset(
                     name="read_names_mapping",
                     data=read_names_to_add_to_h5,
-                    maxshape=(None,),
                     compression=self.compression,
+                    chunks=True,
+                    maxshape=(None,),
                 )
         return read_ids
     
@@ -689,7 +688,7 @@ class MetH5File:
             chrom_calls = cur_df.get_group(chrom)
             self.log.debug(f"Adding {chrom_calls.shape[0]}  sites from chromosome {chrom} to h5 file")
             n = chrom_calls.shape[0]
-            read_names = [read.encode() for read in chrom_calls["read_name"]]
+            read_names = [read for read in chrom_calls["read_name"]]
             
             chrom_chunk_size = min(self.chunk_size, n)
             chrom_group = main_group.require_group(chrom)
