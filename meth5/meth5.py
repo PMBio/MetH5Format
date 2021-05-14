@@ -119,10 +119,11 @@ class MethlyationValuesContainer:
             read_ids_unique = read_ids_unique[np.argsort(idx)]
             return self.chromosome.parent_meth5._decode_read_names(read_ids_unique)
         else:
+            # For backwards compatibility
             read_names_ds = self.chromosome.h5group["read_name"][self.start : self.end]
             read_names_unique, idx = np.unique(read_names_ds, return_index=True)
             read_names_unique = read_names_unique[np.argsort(idx)]
-            return read_names_unique
+            return np.array([r.decode() for r in read_names_unique])
     
     def get_ranges_unique(self) -> np.ndarray:
         """
