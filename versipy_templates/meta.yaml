@@ -22,10 +22,8 @@ requirements:
     - pip>=19.2.1
     - ripgrep>=11.0.1
   run:
-    - __dependency1__
-    - __dependency2__
-    - __dependency3__
-    - __dependency4__
+    - __@{
+    - ::dependencies}__
 about:
   home: __package_url__
   license: __package_licence__

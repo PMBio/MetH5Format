@@ -19,15 +19,17 @@ managed_values:
   __package_licence_url__: https://opensource.org/licenses/MIT
   __minimal_python__: '3.7'
   __entry_point1__: meth5=meth5.__main__:main
-  __dependency1__: numpy>=1.19.2
-  __dependency2__: scipy==1.4.1
-  __dependency3__: pandas>=1.1.3
-  __dependency4__: h5py>=2.10.0
-  __classifiers_1__: 'Development Status :: 4 - Beta'
-  __classifiers_2__: 'Intended Audience :: Science/Research'
-  __classifiers_3__: 'Topic :: Scientific/Engineering :: Bio-Informatics'
-  __classifiers_4__: 'License :: OSI Approved :: MIT License'
-  __classifiers_5__: 'Programming Language :: Python :: 3'
+  __dependencies__:
+    - numpy>=1.19.2
+    - scipy==1.4.1
+    - pandas>=1.1.3
+    - h5py>=2.10.0
+  __classifiers__:
+    - 'Development Status :: 4 - Beta'
+    - 'Intended Audience :: Science/Research'
+    - 'Topic :: Scientific/Engineering :: Bio-Informatics'
+    - 'License :: OSI Approved :: MIT License'
+    - 'Programming Language :: Python :: 3'
   __citation__: Rene Snajder. (2021, May 4). snajder-r/meth5format
 managed_files:
   versipy_templates/setup.py: setup.py
