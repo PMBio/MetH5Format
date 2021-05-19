@@ -24,3 +24,4 @@ def main(
             m5_out.parse_and_add_nanopolish_file(
                 input_file, postpone_sorting_until_close=True, include_chromosomes=allowed_chromosomes
             )
+        m5_out.create_chunk_index()

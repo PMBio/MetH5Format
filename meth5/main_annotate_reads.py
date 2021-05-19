@@ -30,6 +30,7 @@ def read_readgroups(readgroups_file: IO):
             sep="\t",
             header=0,
             dtype={"read_name": str, "group": int},
+            index_col=None
         )
     except Exception as e:
         logging.error("Unable to read read groups file", e)
@@ -39,12 +40,10 @@ def read_readgroups(readgroups_file: IO):
     if len(read_groups.columns) == 2:
         should_colnames = ["read_name", "group"]
     else:
-        logging.error("Invalid number of columns in read groups file (should be 2)")
-        sys.exit(1)
+        raise ValueError(f"Invalid number of columns in read groups file (should be 2, was {len(read_groups.columns)})")
     
     if not all([col in read_groups.columns for col in should_colnames]):
-        logging.error("Invalid column names in read groups file (should be %s)" % should_colnames.join(", "))
-        sys.exit(1)
+        raise ValueError("Invalid column names in read groups file (should be %s)" % should_colnames.join(", "))
     
     return read_groups
 
@@ -54,10 +53,9 @@ def main(
     read_groups_key: str,
     read_group_file: Path,
     chunk_size: int,
-    quiet: bool
 ):
-    read_annotation = read_group_file(read_group_file)
-    read_annotation = read_annotation.set_index("read_name").to_dict()
+    read_annotation = read_readgroups(read_group_file)
+    read_annotation = read_annotation.set_index("read_name")["group"].to_dict()
     
     with MetH5File(m5file, mode="a", chunk_size = chunk_size) as m5:
         m5.annotate_read_groups(read_groups_key, read_annotation, exists_ok = True, overwrite = True)

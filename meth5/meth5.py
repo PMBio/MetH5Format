@@ -148,16 +148,16 @@ class MethlyationValuesContainer:
         """
         return self.chromosome.h5group["llr"][self.start : self.end]
     
-    def get_read_names(self) -> List[str]:
+    def get_read_names(self) -> np.array:
         """
         :return: Numpy array of shape (n) containing the read name for each
         methylation call
         """
         group = self.chromosome.h5group
         if "read_id" in group.keys():
-            return self.chromosome.parent_meth5._decode_read_names(group["read_id"][self.start : self.end])
+            return np.array(self.chromosome.parent_meth5._decode_read_names(group["read_id"][self.start : self.end]))
         elif "read_name" in group.keys():
-            return [r.decode() for r in group["read_name"][self.start : self.end]]
+            return np.array([r.decode() for r in group["read_name"][self.start : self.end]])
     
     def get_read_groups(self, group_key: str) -> np.ndarray:
         """The Meth5 file can store multiple different groupings of
@@ -271,7 +271,7 @@ class MethlyationValuesContainer:
         """Calls get_llr_site_readgroup_aggregate computing the methylation betascore"""
         return self.get_llr_site_readgroup_aggregate(group_key, lambda llrs: compute_betascore(llrs, llr_threshold))
     
-    def to_sparse_methylation_matrix(self, read_groups_key: str = None) -> SparseMethylationMatrixContainer:
+    def to_sparse_methylation_matrix(self, read_read_names: bool = True, read_groups_key: str = None) -> SparseMethylationMatrixContainer:
         """Creates a SparseMethylationMatrixContainer from the values in
         this container. If a read_groups_key is provided, then Meth5
         file will be checked for a matching read group annotation, which
@@ -280,7 +280,9 @@ class MethlyationValuesContainer:
 
         The resulting sparse matrix is stored as a csc_matrix and is  created
         directly to keep memory requirement low
-
+        
+        :param read_read_names: Set to True if you care about reading the read_names (takes some extra disk IO),
+        or False if you are ok with reads being identified using their numeric id in the meth5 file
         :param read_groups_key: The key in the Meth5 file under which the read groups
         (samples) can be found
         :return: SparseMethylationMatrixContainer or None
@@ -288,19 +290,15 @@ class MethlyationValuesContainer:
         # Define canonical order of read names
         read_names = [r for r in self.get_read_names_unique()]
         genomic_ranges = self.get_ranges_unique()
-        
         # Assigns y coordinate in the matrix to a genomic position
         coord_to_index_dict = {genomic_ranges[i, 0]: i for i in range(len(genomic_ranges))}
         
         # Assigns x coordinate in the matrix to a read name
         read_dict = {read_names[i]: i for i in range(len(read_names))}
-        
         read_name_list = self.get_read_names()
-        
         sparse_data = self.get_llrs()[:]
         sparse_x = [read_dict[r] for r in read_name_list]
         sparse_y = [coord_to_index_dict[p] for p in self.get_ranges()[:, 0]]
-        
         if read_groups_key is not None:
             read_groups_ds = self.get_read_groups(read_groups_key)
             read_samples_dict = {rn: rg for (rn, rg) in zip(read_name_list[:], read_groups_ds[:])}
@@ -616,7 +614,10 @@ class MetH5File:
     def _decode_read_names(self, read_ids: List[int]) -> List[str]:
         main_group = self.h5_fp.require_group("reads")
         ds = main_group["read_names_mapping"]
-        return [ds[i].decode() for i in read_ids]
+        unique_ids = set(read_ids)
+        id_name_dict = {i: ds[i].decode() for i in unique_ids}
+        
+        return [id_name_dict[i] for i in read_ids]
     
     def _encode_read_names(self, read_names: List[str]):
         if len(read_names) == 0:
@@ -755,6 +756,17 @@ class MetH5File:
         """
         
         return [str(k) for k in self.h5_fp["chromosomes"].keys()]
+
+    def get_chromosomes_range(self) -> Dict[str, Tuple[int]]:
+        """
+        Note, that this does not reflect the actual length of the chromosome, but only
+        the range for which this M5 file contains values
+        :return: dictionary containing the chromosome name in the key and the min and max genomic position as a value
+        """
+    
+        return {str(k): (self.h5_fp["chromosomes"][k]["range"][0,0],
+                         self.h5_fp["chromosomes"][k]["range"][-1,1])
+                for k in self.h5_fp["chromosomes"].keys()}
     
     def __getitem__(self, chromosome: str) -> ChromosomeContainer:
         """Returns ChromosomeContainer object managing access to values
@@ -794,6 +806,27 @@ class MetH5File:
         # Can't use complex indexing because h5py requires indexes in increasing order
         return [rg_ds[id] for id in read_ids]
     
+    def get_all_read_groups(self, read_group_key: str):
+        """
+        :param read_group_key: Key under which this annotation is stored
+        :return: Dictionary containing integer ids for read groups as well as labels if they are provided.
+                 If no labels are stored in the meth5 file, returns the same integer ids as labels
+        """
+        r_p = self.h5_fp.require_group("reads")
+        rg_g = r_p.require_group("read_groups")
+        
+        if len(rg_g.attrs) != 0:
+            return {int(k): v for k,v in rg_g.attrs.items()}
+        
+        # No labels are stored, so we need to look at the actual ids assigned
+        if read_group_key not in rg_g.keys():
+            raise ValueError(f"No read group annotation stored under key {read_group_key}")
+        
+        rg_ds = rg_g[read_group_key]
+        # Note that although it's saved as int in the m5, the conversion via int(k) here is
+        # important in order to get type "int" instead of type "int64", which some libraries/functions can't deal with
+        return {int(k): str(k) for k in set(rg_ds[()])}
+    
     def annotate_read_groups(
         self, read_group_key: str, map: Dict[str, int], labels: Dict[int, str] = None, exists_ok=False, overwrite=False
     ):
@@ -811,15 +844,15 @@ class MetH5File:
         be updated. If exists_ok=True and overwrite=False, nothing will be done in case
         a grouping with this key already exists
         """
-        group = self.h5_fp["reads"]
-        rg_g = group.require_group("read_groups")
+        r_p = self.h5_fp.require_group("reads")
+        rg_g = r_p.require_group("read_groups")
         if read_group_key in rg_g.keys():
             if not exists_ok:
-                raise ValueError("Cannot annotate read groups - group assignment with this key " "already exists")
+                raise ValueError(f"Cannot annotate read groups - group assignment with key {read_group_key} already exists")
             elif not overwrite:
                 return
         
-        read_names = group["read_names_mapping"][()]
+        read_names = r_p["read_names_mapping"][()]
         rg_assignment = [map.get(read.decode(), -1) for read in read_names]
         
         rg_ds = rg_g.require_dataset(
