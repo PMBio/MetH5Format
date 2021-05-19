@@ -1,7 +1,7 @@
 version:
   major: 0
-  minor: 2
-  micro: 7
+  minor: 3
+  micro: 0
   a: null
   b: null
   rc: null
@@ -20,20 +20,19 @@ managed_values:
   __minimal_python__: '3.7'
   __entry_point1__: meth5=meth5.__main__:main
   __dependencies__:
-    - numpy>=1.19.2
-    - scipy==1.4.1
-    - pandas>=1.1.3
-    - h5py>=2.10.0
+  - numpy>=1.19.2
+  - scipy==1.4.1
+  - pandas>=1.1.3
+  - h5py>=2.10.0
   __classifiers__:
-    - 'Development Status :: 4 - Beta'
-    - 'Intended Audience :: Science/Research'
-    - 'Topic :: Scientific/Engineering :: Bio-Informatics'
-    - 'License :: OSI Approved :: MIT License'
-    - 'Programming Language :: Python :: 3'
+  - 'Development Status :: 4 - Beta'
+  - 'Intended Audience :: Science/Research'
+  - 'Topic :: Scientific/Engineering :: Bio-Informatics'
+  - 'License :: OSI Approved :: MIT License'
+  - 'Programming Language :: Python :: 3'
   __citation__: Rene Snajder. (2021, May 4). snajder-r/meth5format
 managed_files:
   versipy_templates/setup.py: setup.py
   versipy_templates/meta.yaml: meta.yaml
   versipy_templates/.travis.yml: .travis.yml
   versipy_templates/README.md: README.md
-
