@@ -1,4 +1,4 @@
-# MetH5Format 0.3.0
+# MetH5Format 0.3.1
 
 [![GitHub license](https://img.shields.io/github/license/snajder-r/meth5format.svg)](https://github.com/snajder-r/meth5format/blob/master/LICENSE)
 
