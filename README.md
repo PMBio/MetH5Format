@@ -1,4 +1,4 @@
-from re import match# MetH5Format 0.3.1
+# MetH5Format 0.3.1
 
 [![GitHub license](https://img.shields.io/github/license/snajder-r/meth5format.svg)](https://github.com/snajder-r/meth5format/blob/master/LICENSE)
 [![DOI](https://zenodo.org/badge/303672813.svg)](https://zenodo.org/badge/latestdoi/303672813)
@@ -165,3 +165,15 @@ A MetH5 file is an HDF5 container that stores methylation calls for long reads. 
 ```
 
 Where `n` is the number of methylation calls in the respective chromosome, `c` is the number of chunks, and `r`is the total number of reads across all chromosomes.
+
+---
+
+## Citing
+
+The repository is archived at Zenodo. If you use `meth5` please cite as follow:
+
+Rene Snajder. (2021, May 18). snajder-r/meth5. Zenodo. https://doi.org/10.5281/zenodo.4772327
+
+## Authors and contributors
+
+* Rene Snajder (@snajder-r): rene.snajder(at)dkfz-heidelberg.de
