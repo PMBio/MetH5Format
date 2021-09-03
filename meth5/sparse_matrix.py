@@ -297,6 +297,8 @@ class SparseMethylationMatrixContainer:
                 samples = np.array([f"{s}_{x}" for s, x in zip(samples, sharedness)])
         elif set_sample_based_on_sharedness:
             samples = np.array(sharedness)
+        else:
+            samples = None
     
         new_met_matrix = SparseMethylationMatrixContainer(sp.csc_matrix(new_met_matrix), read_names, new_genomic_coord,
                                                           new_genomic_coord_end, read_samples=samples)
