@@ -148,6 +148,18 @@ class MethlyationValuesContainer:
         """
         return self.chromosome.h5group["llr"][self.start : self.end]
     
+    
+    def get_read_ids(self) -> np.array:
+        """
+        :return: Numpy array of shape (n) containing the read id for each
+        methylation call
+        """
+        group = self.chromosome.h5group
+        if "read_id" in group.keys():
+            return np.array(group["read_id"][self.start : self.end])
+        else:
+            raise ValueError("Incompatible MetH5 file version. Use get_read_names instead.")
+        
     def get_read_names(self) -> np.array:
         """
         :return: Numpy array of shape (n) containing the read name for each
