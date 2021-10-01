@@ -1,21 +1,10 @@
 import time
 from pathlib import Path
-from typing import IO, Iterable, List
-from multiprocessing import Queue, Process
-import argparse
+from typing import IO
 import logging
 
-import tqdm
 import pandas as pd
-import numpy as np
 from meth5.meth5 import MetH5File
-from meth5.sparse_matrix import SparseMethylationMatrixContainer
-
-from nanoepiseg.emissions import BernoulliPosterior
-from nanoepiseg.hmm import SegmentationHMM
-from nanoepiseg.postprocessing import cleanup_segmentation
-from nanoepiseg.segments_csv_io import SegmentsWriterBED
-from nanoepiseg.math import llr_to_p
 
 def read_readgroups(readgroups_file: IO):
     """
