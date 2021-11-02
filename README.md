@@ -1,4 +1,4 @@
-# MetH5Format 0.3.1
+# MetH5Format 0.4.0rc1
 
 [![GitHub license](https://img.shields.io/github/license/snajder-r/meth5format.svg)](https://github.com/snajder-r/meth5format/blob/master/LICENSE)
 [![DOI](https://zenodo.org/badge/303672813.svg)](https://zenodo.org/badge/latestdoi/303672813)

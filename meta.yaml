@@ -1,4 +1,4 @@
-{% set version = "0.3.1" %}
+{% set version = "0.4.0rc1" %}
 {% set name = "meth5" %}
 
 package:

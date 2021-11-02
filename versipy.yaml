@@ -1,10 +1,10 @@
 version:
   major: 0
-  minor: 3
-  micro: 1
+  minor: 4
+  micro: 0
   a: null
   b: null
-  rc: null
+  rc: 1
   post: null
   dev: null
 managed_values:
