@@ -1,4 +1,4 @@
-# MetH5Format 0.4.0rc1
+# MetH5Format 0.5.1
 
 [![GitHub license](https://img.shields.io/github/license/snajder-r/meth5format.svg)](https://github.com/snajder-r/meth5format/blob/master/LICENSE)
 [![DOI](https://zenodo.org/badge/303672813.svg)](https://zenodo.org/badge/latestdoi/303672813)
@@ -38,7 +38,7 @@ conda install -c snajder-r meth5
 
 ### Creating a MetH5 file from nanopolish methylation calls
 
-You can create a MetH5 file with the following command, where `INPUT_PATH` refers to either a nanopolish tsv output file (may or may not be gzipped) or it can be a directory which contains only said files.
+You can create a MetH5 file with the following command, where `INPUT_PATH` refers to either a nanopolish tsv output file (may or may not be gzipped) or it can be a directory which contains only said files. 
 
 ```
 meth5 create_m5 --input_paths INPUT_PATH1 [INPUT_PATH2 ...] --output_file OUTPUT_FILE.m5

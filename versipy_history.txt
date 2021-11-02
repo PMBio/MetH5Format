@@ -18,3 +18,4 @@
 2021-10-19 14:16:12.377664	0.3.1	Versipy auto bump-up
 2021-10-19 14:16:51.184643	0.4.0rc1	Versipy auto bump-up
 2021-11-02 14:01:42.630325	0.5.0	Versipy auto bump-up
+2021-11-02 14:33:03.457969	0.5.1	Versipy auto bump-up
