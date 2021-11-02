@@ -35,10 +35,11 @@ def main():
     sc_args.set_defaults(func=meth5.main_create_m5.main)
     
     sc_args.add_argument(
-        "--input_dir",
+        "--input_paths",
         type=Path,
+        nargs="+",
         required=True,
-        help="Input directory containing Nanopolish result files",
+        help="Path(s) to Nanopolish result files or folder containing them",
     )
     
     sc_args.add_argument(

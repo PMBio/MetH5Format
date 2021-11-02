@@ -38,10 +38,10 @@ conda install -c snajder-r meth5
 
 ### Creating a MetH5 file from nanopolish methylation calls
 
-Assuming you have nanopolish methylation calls with filenames `*.tsv`, you can create a MetH5 file with the following command:
+You can create a MetH5 file with the following command, where `INPUT_PATH` refers to either a nanopolish tsv output file (may or may not be gzipped) or it can be a directory which contains only said files. 
 
 ```
-meth5 create_h5 --input_dir INPUT_DIR/ --output_file OUTPUT_FILE.m5
+meth5 create_m5 --input_paths INPUT_PATH1 [INPUT_PATH2 ...] --output_file OUTPUT_FILE.m5
 ```
 
 In order to annotate reads with read grouping (for example as samples or haplotypes) you can do so by running: 
