@@ -197,7 +197,7 @@ class MethlyationValuesContainer:
         else:
             # Backwards compatibility for older format
             return self.chromosome.h5group["read_groups"][group_key][self.start : self.end]
-    
+        
     def __compute_llr_site_aggregate(self, ranges, llrs, aggregation_fun):
         if len(ranges) == 0:
             return np.zeros((0)), np.zeros((0,2))
@@ -859,6 +859,12 @@ class MetH5File:
         # important in order to get type "int" instead of type "int64", which some libraries/functions can't deal with
         return {int(k): str(k) for k in set(rg_ds[()])}
     
+    def get_read_group_keys(self) -> List[str]:
+        if "reads" in self.h5_fp.keys():
+            return list(self.h5_fp["reads"]["read_groups"].keys())
+        else:
+            return []
+        
     def annotate_read_groups(
         self, read_group_key: str, map: Dict[str, int], labels: Dict[int, str] = None, exists_ok=False, overwrite=False
     ):
