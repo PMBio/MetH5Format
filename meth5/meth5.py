@@ -7,6 +7,7 @@ import logging
 from pathlib import Path
 from typing import Union, List, Dict, IO, Tuple, Any, Optional
 from types import FunctionType
+from collections import Iterable
 
 from meth5.sparse_matrix import SparseMethylationMatrixContainer
 
@@ -148,7 +149,6 @@ class MethlyationValuesContainer:
         """
         return self.chromosome.h5group["llr"][self.start : self.end]
     
-    
     def get_read_ids(self) -> np.array:
         """
         :return: Numpy array of shape (n) containing the read id for each
@@ -159,7 +159,7 @@ class MethlyationValuesContainer:
             return np.array(group["read_id"][self.start : self.end])
         else:
             raise ValueError("Incompatible MetH5 file version. Use get_read_names instead.")
-        
+    
     def get_read_names(self) -> np.array:
         """
         :return: Numpy array of shape (n) containing the read name for each
@@ -171,7 +171,9 @@ class MethlyationValuesContainer:
         elif "read_name" in group.keys():
             return np.array([r.decode() for r in group["read_name"][self.start : self.end]])
     
-    def get_read_groups(self, group_key: str = None, read_group_map:Dict = None) -> np.ndarray:
+    def get_read_groups(
+        self, group_key: str = None, read_group_map: Dict = None, resolve_label: bool = False
+    ) -> np.ndarray:
         """The Meth5 file can store multiple different groupings of
         methylation calls. Typically, this would be based on grouping
         reads (such as from read-phasing) but any sort of grouping of
@@ -180,6 +182,7 @@ class MethlyationValuesContainer:
 
         :param group_key: The group key under which the grouping has been stored
         :param read_group_map: A dictionary containing read groups (in case they have not been stored in the file)
+        :param resolve_label: If true returns the string label of the read groups, if false return the integer id
         :return: Numpy array of shape (n) containing the read group for each
         methylation call, given the grouping key.
         """
@@ -189,18 +192,18 @@ class MethlyationValuesContainer:
         if read_group_map is not None:
             read_names = self.get_read_names()
             return np.array([read_group_map.get(r, -1) for r in read_names])
-
+        
         if "reads" in self.chromosome.parent_meth5.h5_fp.keys():
             self.chromosome.parent_meth5.h5_fp["reads"]["read_groups"][group_key]
             read_ids = self.chromosome.h5group["read_id"][self.start : self.end]
-            return self.chromosome.parent_meth5._get_read_groups(read_ids, group_key)
+            return self.chromosome.parent_meth5._get_read_groups(read_ids, group_key, resolve_label=resolve_label)
         else:
             # Backwards compatibility for older format
             return self.chromosome.h5group["read_groups"][group_key][self.start : self.end]
-        
+    
     def __compute_llr_site_aggregate(self, ranges, llrs, aggregation_fun):
         if len(ranges) == 0:
-            return np.zeros((0)), np.zeros((0,2))
+            return np.zeros((0)), np.zeros((0, 2))
         # Takes advantage of ranges being sorted
         range_diff = (np.diff(ranges[:, 0]) != 0) | (np.diff(ranges[:, 1]) != 0)
         # Changepoints where it goes from one range to the next
@@ -262,7 +265,10 @@ class MethlyationValuesContainer:
         return aggregated_llrs
     
     def get_llr_site_readgroup_aggregate(
-        self, aggregation_fun: FunctionType, group_key: Optional[str] = None, read_group_map: Optional[Dict[str, int]] = None
+        self,
+        aggregation_fun: FunctionType,
+        group_key: Optional[str] = None,
+        read_group_map: Optional[Dict[str, int]] = None,
     ) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
         """For each read group, computes a per-site aggregate of the LLR. The provided
         aggregation function should take a numpy array and can return
@@ -281,7 +287,7 @@ class MethlyationValuesContainer:
         """
         all_llrs = self.get_llrs()
         all_ranges = self.get_ranges()
-        all_groups = self.get_read_groups(group_key = group_key, read_group_map = read_group_map)
+        all_groups = self.get_read_groups(group_key=group_key, read_group_map=read_group_map)
         
         return {
             group: self.__compute_llr_site_aggregate(
@@ -301,7 +307,9 @@ class MethlyationValuesContainer:
         )
     
     def to_sparse_methylation_matrix(
-        self, read_read_names: bool = True, read_groups_key: str = None
+        self,
+        read_read_names: bool = True,
+        read_groups_key: Union[str, List[str]] = None,
     ) -> SparseMethylationMatrixContainer:
         """Creates a SparseMethylationMatrixContainer from the values in
         this container. If a read_groups_key is provided, then Meth5
@@ -315,24 +323,37 @@ class MethlyationValuesContainer:
         :param read_read_names: Set to True if you care about reading the read_names (takes some extra disk IO),
         or False if you are ok with reads being identified using their numeric id in the meth5 file
         :param read_groups_key: The key in the Meth5 file under which the read groups
-        (samples) can be found
+        (e.g. samples or haplotypes) can be found
         :return: SparseMethylationMatrixContainer or None
         """
         # Define canonical order of read names
-        read_names = [r for r in self.get_read_names_unique()]
+        if read_read_names:
+            read_name_list = self.get_read_names()
+            read_names = [r for r in self.get_read_names_unique()]
+        else:
+            read_name_list = self.get_read_ids()
+            read_names = [r for r in set(self.get_read_ids())]
+        
         genomic_ranges = self.get_ranges_unique()
         # Assigns y coordinate in the matrix to a genomic position
         coord_to_index_dict = {genomic_ranges[i, 0]: i for i in range(len(genomic_ranges))}
         
         # Assigns x coordinate in the matrix to a read name
         read_dict = {read_names[i]: i for i in range(len(read_names))}
-        read_name_list = self.get_read_names()
+        
         sparse_data = self.get_llrs()[:]
         sparse_x = [read_dict[r] for r in read_name_list]
         sparse_y = [coord_to_index_dict[p] for p in self.get_ranges()[:, 0]]
         if read_groups_key is not None:
-            read_groups_ds = self.get_read_groups(group_key = read_groups_key)
-            read_samples_dict = {rn: rg for (rn, rg) in zip(read_name_list[:], read_groups_ds[:])}
+            if isinstance(read_groups_key, str):
+                read_groups_ds = self.get_read_groups(group_key=read_groups_key)
+                read_samples_dict = {rn: rg for (rn, rg) in zip(read_name_list[()], read_groups_ds[()])}
+            elif isinstance(read_groups_key, Iterable):
+                read_groups_all = [
+                    self.get_read_groups(group_key=key, resolve_label=True)[:] for key in read_groups_key
+                ]
+                read_groups_all = ["_".join(rgs) for rgs in zip(*read_groups_all)]
+                read_samples_dict = {rn: rg for (rn, rg) in zip(read_name_list[()], read_groups_all)}
             read_samples = np.array([read_samples_dict[r] for r in read_names])
         else:
             read_samples = None
@@ -594,6 +615,8 @@ class MetH5File:
     
     def resort_chromosome(self, chrom: str):
         """Forces resorting values of one chromosome by range"""
+        # TODO think of a way to do this that doesn't require loading one entire
+        # dataset into memory
         chrom_group = self.h5_fp["chromosomes"][chrom]
         sort_order = np.argsort(chrom_group["range"][:, 0], kind="mergesort")
         logging.debug("Re-sorting h5 entries for chromosome %s" % chrom)
@@ -760,8 +783,6 @@ class MetH5File:
                 maxshape=(chrom_max_calls,),
             )
             
-            # TODO think of a way to do this that doesn't require loading one entire
-            # dataset into memory
             if postpone_sorting_until_close:
                 chrom_group.attrs["is_sorted"] = False
             else:
@@ -833,10 +854,21 @@ class MetH5File:
         for chromosome in self.get_chromosomes():
             self[chromosome].create_chunk_index(*args, **kwargs)
     
-    def _get_read_groups(self, read_ids: List[int], read_group_key: str) -> np.ndarray:
+    def _get_read_groups(self, read_ids: List[int], read_group_key: str, resolve_label: bool = False) -> np.ndarray:
         rg_ds = self.h5_fp["reads"]["read_groups"][read_group_key]
-        # Can't use complex indexing because h5py requires indexes in increasing order
-        return np.array([rg_ds[id] for id in read_ids])
+        
+        # In order to reduce reads from disk as much as possible, we first read the read group
+        # for each read once, and then unravel it for the list of read ids
+        # Note that indices in h5py need to be in ascending order
+        read_ids_unique = sorted(list(set(read_ids)))
+        read_groups_unique = rg_ds[read_ids_unique]
+        rg_dict = {i: rg for i, rg in zip(read_ids_unique, read_groups_unique)}
+        ret = [rg_dict[id] for id in read_ids]
+        
+        if resolve_label:
+            rg_name_dict = dict(self.h5_fp["reads"]["read_groups"][read_group_key].attrs)
+            ret = [rg_name_dict.get(str(rgid), str(rgid)) for rgid in ret]
+        return np.array(ret)
     
     def get_all_read_groups(self, read_group_key: str):
         """
@@ -864,7 +896,7 @@ class MetH5File:
             return list(self.h5_fp["reads"]["read_groups"].keys())
         else:
             return []
-        
+    
     def annotate_read_groups(
         self, read_group_key: str, map: Dict[str, int], labels: Dict[int, str] = None, exists_ok=False, overwrite=False
     ):

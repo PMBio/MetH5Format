@@ -6,6 +6,7 @@ import logging
 import pandas as pd
 from meth5.meth5 import MetH5File
 
+
 def read_readgroups(readgroups_file: IO):
     """
     Reads file that assigns read to read groups (such as haplotypes, samples, clusters, etc)
@@ -15,11 +16,7 @@ def read_readgroups(readgroups_file: IO):
     # Loading
     try:
         read_groups = pd.read_csv(
-            readgroups_file,
-            sep="\t",
-            header=0,
-            dtype={"read_name": str, "group": int},
-            index_col=None
+            readgroups_file, sep="\t", header=0, dtype={"read_name": str, "group": int}, index_col=None
         )
     except Exception as e:
         logging.error("Unable to read read groups file", e)
@@ -46,5 +43,5 @@ def main(
     read_annotation = read_readgroups(read_group_file)
     read_annotation = read_annotation.set_index("read_name")["group"].to_dict()
     
-    with MetH5File(m5file, mode="a", chunk_size = chunk_size) as m5:
-        m5.annotate_read_groups(read_groups_key, read_annotation, exists_ok = True, overwrite = True)
+    with MetH5File(m5file, mode="a", chunk_size=chunk_size) as m5:
+        m5.annotate_read_groups(read_groups_key, read_annotation, exists_ok=True, overwrite=True)

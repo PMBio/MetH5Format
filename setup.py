@@ -30,7 +30,8 @@ setup(
         "numpy>=1.19.2",
         "scipy==1.4.1",
         "pandas>=1.1.3",
-        "h5py>=2.10.0"
+        "h5py>=2.10.0",
+        "tqdm"
     ],
     packages=["meth5"],
     package_dir={"meth5": "meth5"},
