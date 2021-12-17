@@ -242,7 +242,14 @@ class MethlyationValuesContainer:
         """Calls get_llr_site_aggregate computing the methylation betascore"""
         return self.get_llr_site_aggregate(lambda llrs: compute_betascore(llrs, llr_threshold))
     
-    def get_llr_read_aggregate(self, aggregation_fun: FunctionType) -> Dict[str, Any]:
+    def __compute_llr_read_aggregate(self, reads, llrs, aggregation_fun):
+        readset = set(reads)
+        aggregated_llrs = {read: aggregation_fun(llrs[reads == read]) for read in readset}
+        return aggregated_llrs
+    
+    def get_llr_read_aggregate(
+        self, aggregation_fun: FunctionType, resolve_read_names=False
+    ) -> Dict[Union[str, int], Any]:
         """Computes per-read an aggregate of the LLR. The provided
         aggregation function should take a numpy array and can return
         any arbitrary aggregate. The return value is a numpy array
@@ -252,23 +259,25 @@ class MethlyationValuesContainer:
         be considered as two separate ranges
 
         :param aggregation_fun: Function that takes a numpy array of llrs and returns the aggregate
-
+        :param resolve_read_names: If True, the resulting dictionary contains the read names (slower), otherwise read ids (faster)
         :return: Tuple consisting of:
           * aggregation result
           * ranges for each aggregation
         """
         llrs = self.get_llrs()
-        reads = self.get_read_names()
-        readset = set(reads)
+        if resolve_read_names:
+            reads = self.get_read_names()
+        else:
+            reads = self.get_read_ids()
         
-        aggregated_llrs = {read: aggregation_fun(llrs[reads == read]) for read in readset}
-        return aggregated_llrs
+        return self.__compute_llr_read_aggregate(llrs, reads, aggregation_fun)
     
     def get_llr_site_readgroup_aggregate(
         self,
         aggregation_fun: FunctionType,
         group_key: Optional[str] = None,
         read_group_map: Optional[Dict[str, int]] = None,
+        resolve_label: bool = False
     ) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
         """For each read group, computes a per-site aggregate of the LLR. The provided
         aggregation function should take a numpy array and can return
@@ -287,11 +296,47 @@ class MethlyationValuesContainer:
         """
         all_llrs = self.get_llrs()
         all_ranges = self.get_ranges()
-        all_groups = self.get_read_groups(group_key=group_key, read_group_map=read_group_map)
+        all_groups = self.get_read_groups(group_key=group_key, read_group_map=read_group_map, resolve_label=resolve_label)
         
         return {
             group: self.__compute_llr_site_aggregate(
                 all_ranges[all_groups == group], all_llrs[all_groups == group], aggregation_fun
+            )
+            for group in set(all_groups)
+        }
+    
+    def get_llr_read_readgroup_aggregate(
+        self,
+        aggregation_fun: FunctionType,
+        group_key: Optional[str] = None,
+        read_group_map: Optional[Dict[str, int]] = None,
+        resolve_read_names=False,
+    ) -> Dict[str, Dict[str, Any]]:
+        """For each read group, computes a per-read aggregate of the LLR. The provided
+        aggregation function should take a numpy array and can return
+        any arbitrary aggregate. The return value is a dictionary with the key
+        being each read group and the value being a dictionary containing the read id as a key and
+        the aggregate as a valuetuple with the numpy arrays
+
+        :param group_key: The group key under which the grouping has been stored
+        :param read_group_map: A dictionary containing read groups (in case they have not been stored in the file)
+        :param aggregation_fun: Function that takes a numpy array of llrs and returns the aggregate
+        :param resolve_read_names: If True, the resulting dictionary contains the read names (slower), otherwise read ids (faster)
+
+        :return: {readgroup_key: {read_id: aggregated llrs)
+        """
+        all_llrs = self.get_llrs()
+        
+        if resolve_read_names:
+            all_reads = self.get_read_names()
+        else:
+            all_reads = self.get_read_ids()
+        
+        all_groups = self.get_read_groups(group_key=group_key, read_group_map=read_group_map)
+        
+        return {
+            group: self.__compute_llr_read_aggregate(
+                all_reads[all_groups == group], all_llrs[all_groups == group], aggregation_fun
             )
             for group in set(all_groups)
         }
@@ -555,24 +600,14 @@ class ChromosomeContainer:
         start_chunk_start = start_chunk * index_chunk_size
         start_chunk_end = min(len(self) - 1, (start_chunk + 1) * index_chunk_size)
         start_chunk_ranges = self.h5group["range"][start_chunk_start:start_chunk_end, :]
-        start_in_range_indices = np.arange(len(start_chunk_ranges))[start_chunk_ranges[:, 1] >= genomic_start]
-        if len(start_in_range_indices) > 0:
-            # Add index of first value that is in the range
-            start_index += start_in_range_indices[0]
+        start_index += np.searchsorted(start_chunk_ranges[:, 1], genomic_start, side="left")
         
         # Find precise end point
         end_index = end_chunk * index_chunk_size
         end_chunk_start = end_chunk * index_chunk_size
         end_chunk_end = min(len(self) - 1, (end_chunk + 1) * index_chunk_size)
         end_chunk_ranges = self.h5group["range"][end_chunk_start:end_chunk_end, :]
-        end_oor_indices = np.arange(len(end_chunk_ranges))[end_chunk_ranges[:, 0] >= genomic_end]
-        if len(end_oor_indices) > 0:
-            # Add index of first value that is out of range
-            end_index += end_oor_indices[0]
-        else:
-            # If all values in the chunk are in the range
-            end_index = min(len(self), end_index + index_chunk_size)
-        
+        end_index += np.searchsorted(end_chunk_ranges[:, 0], genomic_end, side="right")
         return MethlyationValuesContainer(self, start_index, end_index)
 
 

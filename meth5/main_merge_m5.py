@@ -37,18 +37,19 @@ def main(
         for i, input_file in enumerate(input_m5_files):
             with MetH5File(input_file, "r") as m5_in:
                 print("Reading ", input_file)
-                for rg_key in m5_in.get_read_group_keys():
-                    names = m5_in.get_all_read_groups(rg_key)
-                    if rg_key not in rg_maps:
-                        rg_maps[rg_key] = {}
-                    read_group_ids = m5_in.h5_fp["reads"]["read_groups"][rg_key][()]
-                    read_names = m5_in.h5_fp["reads"]["read_names_mapping"][()]
-                    print("Reading read groups ", rg_key)
-                    for rn, rg_id in zip(read_names,  tqdm.tqdm(read_group_ids)):
-                        rg_maps[rg_key][rn.decode()] = names[rg_id]
-                
-                for rn in read_names:
-                    rg_maps[read_groups_key][rn.decode()] = read_group_names[i]
+                if "read_groups" in m5_in.h5_fp["reads"].keys():
+                    for rg_key in m5_in.get_read_group_keys():
+                        names = m5_in.get_all_read_groups(rg_key)
+                        if rg_key not in rg_maps:
+                            rg_maps[rg_key] = {}
+                        read_group_ids = m5_in.h5_fp["reads"]["read_groups"][rg_key][()]
+                        read_names = m5_in.h5_fp["reads"]["read_names_mapping"][()]
+                        print("Reading read groups ", rg_key)
+                        for rn, rg_id in zip(read_names,  tqdm.tqdm(read_group_ids)):
+                            rg_maps[rg_key][rn.decode()] = names[rg_id]
+                    
+                    for rn in read_names:
+                        rg_maps[read_groups_key][rn.decode()] = read_group_names[i]
                 if allowed_chromosomes is None:
                     chromosomes = set(m5_in.get_chromosomes())
                 else:
@@ -62,7 +63,7 @@ def main(
                         chrom_container = m5_in[chromosome]
                         percent_per_chunk = percent_per_chrom / chrom_container.get_number_of_chunks()
                         for chunk in chrom_container.get_chunk_ids():
-                            values_container = chrom_container.get_chunk(chunk)
+                            values_container = chrom_container.get_chunk(chunk, overlap=False)
                             ranges = values_container.get_ranges()
                             llrs = values_container.get_llrs()
                             read_names = values_container.get_read_names()
