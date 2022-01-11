@@ -277,7 +277,7 @@ class MethlyationValuesContainer:
         aggregation_fun: FunctionType,
         group_key: Optional[str] = None,
         read_group_map: Optional[Dict[str, int]] = None,
-        resolve_label: bool = False
+        resolve_label: bool = False,
     ) -> Dict[str, Tuple[np.ndarray, np.ndarray]]:
         """For each read group, computes a per-site aggregate of the LLR. The provided
         aggregation function should take a numpy array and can return
@@ -296,7 +296,9 @@ class MethlyationValuesContainer:
         """
         all_llrs = self.get_llrs()
         all_ranges = self.get_ranges()
-        all_groups = self.get_read_groups(group_key=group_key, read_group_map=read_group_map, resolve_label=resolve_label)
+        all_groups = self.get_read_groups(
+            group_key=group_key, read_group_map=read_group_map, resolve_label=resolve_label
+        )
         
         return {
             group: self.__compute_llr_site_aggregate(
@@ -914,14 +916,14 @@ class MetH5File:
         r_p = self.h5_fp.require_group("reads")
         rg_g = r_p.require_group("read_groups")
         
-        if len(rg_g.attrs) != 0:
-            return {int(k): v for k, v in rg_g.attrs.items()}
-        
-        # No labels are stored, so we need to look at the actual ids assigned
         if read_group_key not in rg_g.keys():
             raise ValueError(f"No read group annotation stored under key {read_group_key}")
         
         rg_ds = rg_g[read_group_key]
+        
+        if len(rg_ds.attrs) != 0:
+            return {int(k): v for k, v in rg_ds.attrs.items()}
+        
         # Note that although it's saved as int in the m5, the conversion via int(k) here is
         # important in order to get type "int" instead of type "int64", which some libraries/functions can't deal with
         return {int(k): str(k) for k in set(rg_ds[()])}
