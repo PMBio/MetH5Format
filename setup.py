@@ -28,7 +28,7 @@ setup(
     ],
     install_requires=[
         "numpy>=1.19.2",
-        "scipy==1.4.1",
+        "scipy>=1.7.3",
         "pandas>=1.1.3",
         "h5py>=2.10.0"
     ],

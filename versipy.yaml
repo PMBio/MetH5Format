@@ -21,7 +21,7 @@ managed_values:
   __entry_point1__: meth5=meth5.__main__:main
   __dependencies__:
   - numpy>=1.19.2
-  - scipy==1.4.1
+  - scipy>=1.7.3
   - pandas>=1.1.3
   - h5py>=2.10.0
   __classifiers__:
