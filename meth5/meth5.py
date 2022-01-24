@@ -622,6 +622,7 @@ class MetH5File:
         mode: str = "r",
         chunk_size=int(1e6),
         compression="gzip",
+        compression_level=4,
         max_calls: Dict[str, int] = None,
     ):
         """Initializes Meth5File and directly opens the file pointer.
@@ -640,6 +641,7 @@ class MetH5File:
         self.chrom_container_cache = {}
         self.log = logging.getLogger("NET:MetH5")
         self.compression = compression
+        self.compression_level = compression_level
         self.max_calls = max_calls if max_calls is not None else {}
         self.h5_fp = h5py.File(self.h5filepath, mode=self.mode)
     
@@ -704,7 +706,11 @@ class MetH5File:
     
     def _decode_read_names(self, read_ids: List[int]) -> List[str]:
         main_group = self.h5_fp.require_group("reads")
-        ds = main_group["read_names_mapping"]
+        try:
+            ds = main_group["read_names_mapping"]
+        except:
+            raise ValueError("MetH5 file does not contain read-names, so we cannot map annotations to read-names")
+        
         unique_ids = set(read_ids)
         id_name_dict = {i: ds[i].decode() for i in unique_ids}
         
@@ -751,6 +757,7 @@ class MetH5File:
                     name="read_names_mapping",
                     data=read_names_to_add_to_h5,
                     compression=self.compression,
+                    compression_opts=self.compression_level,
                     chunks=True,
                     maxshape=(None,),
                 )
@@ -781,7 +788,12 @@ class MetH5File:
             chrom_calls = cur_df.get_group(chrom)
             self.log.debug(f"Adding {chrom_calls.shape[0]}  sites from chromosome {chrom} to h5 file")
             n = chrom_calls.shape[0]
-            read_names = [read for read in chrom_calls["read_name"]]
+            
+            if "read_name" in chrom_calls:
+                read_names = [read for read in chrom_calls["read_name"]]
+                read_ids = self._encode_read_names(read_names)
+            else:
+                read_ids = [read for read in chrom_calls["read_id"]]
             
             chrom_chunk_size = min(self.chunk_size, n)
             chrom_group = main_group.require_group(chrom)
@@ -806,8 +818,6 @@ class MetH5File:
                 chunks=(chrom_chunk_size,),
                 maxshape=(chrom_max_calls,),
             )
-            
-            read_ids = self._encode_read_names(read_names)
             
             self._create_or_extend(
                 parent_group=chrom_group,
@@ -951,8 +961,12 @@ class MetH5File:
         be updated. If exists_ok=True and overwrite=False, nothing will be done in case
         a grouping with this key already exists
         """
-        r_p = self.h5_fp.require_group("reads")
-        rg_g = r_p.require_group("read_groups")
+        try:
+            r_p = self.h5_fp.require_group("reads")
+            rg_g = r_p.require_group("read_groups")
+        except:
+            raise ValueError("MetH5 file does not contain read-names, so we cannot map annotations to read-names")
+        
         if read_group_key in rg_g.keys():
             if not exists_ok:
                 raise ValueError(
@@ -969,6 +983,8 @@ class MetH5File:
             name=read_group_key,
             dtype=int,
             shape=(len(rg_assignment),),
+            compression=self.compression,
+            compression_opts=self.compression_level,
         )
         rg_ds[:] = rg_assignment
         

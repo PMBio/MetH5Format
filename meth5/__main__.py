@@ -88,11 +88,13 @@ def main():
         nargs="+",
         help="List of MetH5 files",
     )
+
+    sc_args.add_argument("--no_read_groups", action="store_true", help="Read groups will not be copied", )
     
     sc_args.add_argument(
         "--read_group_names",
         type=str,
-        required=True,
+        required=False,
         nargs="+",
         help="One name per input file",
     )
@@ -100,8 +102,14 @@ def main():
     sc_args.add_argument(
         "--read_groups_key",
         type=str,
-        required=True,
+        required=False,
         help="Read groups key under which the groups should be stored",
+    )
+    
+    sc_args.add_argument(
+        "--no_read_names",
+        action="store_true",
+        help="Globally unique read names are not stored, only numeric read ids unique to the output file",
     )
     
     sc_args.add_argument(
@@ -125,6 +133,15 @@ def main():
         choices=["gzip", "None"],
         help="Compression method for the MetH5 data structures. Use 'gzip' for smaller file size, or 'None' for "
         "faster read and write speeds",
+    )
+    
+    sc_args.add_argument(
+        "--compression_level",
+        type=int,
+        required=False,
+        default=4,
+        choices=list(range(1,10)),
+        help="Value from 1-9, where 1 is fastest and 9 is smallest",
     )
     
     sc_args.add_argument(
