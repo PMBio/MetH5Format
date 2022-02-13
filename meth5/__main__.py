@@ -129,10 +129,10 @@ def main():
         "--compression",
         type=str,
         required=False,
-        default="gzip",
-        choices=["gzip", "None"],
-        help="Compression method for the MetH5 data structures. Use 'gzip' for smaller file size, or 'None' for "
-        "faster read and write speeds",
+        default="lzf",
+        choices=["gzip", "lzf", "None"],
+        help="Compression method for the MetH5 data structures. Use 'gzip' for smallest file size. Use 'lzf' for fastest "
+             "access speed. For no compression you can also provide 'None', but is not recommended. Default: lzf",
     )
     
     sc_args.add_argument(
