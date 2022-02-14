@@ -22,3 +22,4 @@
 2022-01-11 09:13:29.395899	0.6.0	Versipy auto bump-up
 2022-01-11 09:18:34.652941	0.6.1	Versipy auto bump-up
 2022-01-24 13:00:15.439266	0.7.0	Versipy auto bump-up
+2022-02-13 11:21:48.503810	0.8.0	Versipy auto bump-up
