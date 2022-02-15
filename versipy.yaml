@@ -1,6 +1,6 @@
 version:
-  major: 0
-  minor: 7
+  major: 1
+  minor: 0
   micro: 0
   a: null
   b: null
@@ -21,9 +21,11 @@ managed_values:
   __entry_point1__: meth5=meth5.__main__:main
   __dependencies__:
   - numpy>=1.19.2
-  - scipy>=1.7.3
+  - scipy==1.4.1
   - pandas>=1.1.3
   - h5py>=2.10.0
+  - tqdm
+  - setuptools
   __classifiers__:
   - 'Development Status :: 4 - Beta'
   - 'Intended Audience :: Science/Research'
