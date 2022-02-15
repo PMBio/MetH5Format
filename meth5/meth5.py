@@ -621,7 +621,7 @@ class MetH5File:
         h5filepath: Union[str, Path, IO],
         mode: str = "r",
         chunk_size=int(1e6),
-        compression="gzip",
+        compression="lzf",
         compression_level=4,
         max_calls: Dict[str, int] = None,
     ):
@@ -641,7 +641,7 @@ class MetH5File:
         self.chrom_container_cache = {}
         self.log = logging.getLogger("NET:MetH5")
         self.compression = compression
-        self.compression_level = compression_level
+        self.compression_level = compression_level if compression == "gzip" else None
         self.max_calls = max_calls if max_calls is not None else {}
         self.h5_fp = h5py.File(self.h5filepath, mode=self.mode)
     
