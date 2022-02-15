@@ -7,10 +7,11 @@ from meth5.util import argtype_M5File
 
 __description__ = "Create m5 file from Nanopolish result files"
 
+
 def set_arguments(sc_args: argparse.ArgumentParser):
     sc_args.add_argument(
         "--input_paths",
-        type=argtype_M5File,
+        type=argparse.FileType,
         nargs="+",
         required=True,
         help="Path(s) to Nanopolish result files or folder containing them",
@@ -33,10 +34,11 @@ def set_arguments(sc_args: argparse.ArgumentParser):
         "--compression",
         type=str,
         required=False,
-        default="gzip",
-        choices=["gzip", "None"],
-        help="Compression method for the MetH5 data structures. Use 'gzip' for smaller file size, or 'None' for "
-        "faster read and write speeds",
+        default="lzf",
+        choices=["gzip", "lzf", "None"],
+        help="Compression method for the MetH5 data structures. Use 'gzip' for smallest file size. Use 'lzf' for "
+        "fastest access speed. For no compression you can also provide 'None', but is not recommended. "
+        "Default: lzf",
     )
     
     sc_args.add_argument(

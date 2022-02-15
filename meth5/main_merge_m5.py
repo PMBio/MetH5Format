@@ -15,7 +15,9 @@ def isint(s):
     except:
         return False
 
+
 __description__ = "Merge m5 file from Nanopolish result files"
+
 
 def set_arguments(sc_args: argparse.ArgumentParser):
     sc_args.add_argument(
@@ -58,10 +60,11 @@ def set_arguments(sc_args: argparse.ArgumentParser):
         "--compression",
         type=str,
         required=False,
-        default="gzip",
-        choices=["gzip", "None"],
-        help="Compression method for the MetH5 data structures. Use 'gzip' for smaller file size, or 'None' for "
-        "faster read and write speeds",
+        default="lzf",
+        choices=["gzip", "lzf", "None"],
+        help="Compression method for the MetH5 data structures. Use 'gzip' for smallest file size. Use 'lzf' for "
+        "fastest access speed. For no compression you can also provide 'None', but is not recommended. "
+        "Default: lzf",
     )
     
     sc_args.add_argument(
@@ -72,6 +75,7 @@ def set_arguments(sc_args: argparse.ArgumentParser):
         default=None,
         help="Only include these chromosomes",
     )
+
 
 def compute_total_chrom_sizes(input_m5_files: List[str]) -> Dict[str, int]:
     chrom_size = {}
