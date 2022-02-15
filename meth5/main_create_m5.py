@@ -2,18 +2,67 @@ from typing import List
 import argparse
 import tqdm
 from pathlib import Path
-from meth5.meth5 import MetH5File
+from meth5 import MetH5File
+from meth5.util import argtype_M5File
+
+__description__ = "Create m5 file from Nanopolish result files"
+
+def set_arguments(sc_args: argparse.ArgumentParser):
+    sc_args.add_argument(
+        "--input_paths",
+        type=argtype_M5File,
+        nargs="+",
+        required=True,
+        help="Path(s) to Nanopolish result files or folder containing them",
+    )
+    
+    sc_args.add_argument(
+        "--output_file",
+        type=Path,
+        required=True,
+        help="Output MetH5 file",
+    )
+    
+    sc_args.add_argument(
+        "--quiet",
+        action="store_true",
+        help="No progress bar or warnings will be displayed",
+    )
+    
+    sc_args.add_argument(
+        "--compression",
+        type=str,
+        required=False,
+        default="gzip",
+        choices=["gzip", "None"],
+        help="Compression method for the MetH5 data structures. Use 'gzip' for smaller file size, or 'None' for "
+        "faster read and write speeds",
+    )
+    
+    sc_args.add_argument(
+        "--allowed_chromosomes",
+        type=str,
+        nargs="+",
+        required=False,
+        default=None,
+        help="Only include these chromosomes",
+    )
 
 
 def main(
-    chunk_size: int, input_paths: List[Path], output_file: Path, compression: str, allowed_chromosomes: List[str], quiet: bool
+    chunk_size: int,
+    input_paths: List[Path],
+    output_file: Path,
+    compression: str,
+    allowed_chromosomes: List[str],
+    quiet: bool,
 ):
     if compression == "None":
         compression = None
     
     if allowed_chromosomes is not None and len(allowed_chromosomes) == 0:
         allowed_chromosomes = None
-
+    
     input_files = []
     for input_path in input_paths:
         if not input_path.exists():

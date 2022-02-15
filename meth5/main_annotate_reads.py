@@ -1,10 +1,36 @@
-import time
+import argparse
 from pathlib import Path
 from typing import IO
 import logging
+from meth5.util import argtype_M5File
 
 import pandas as pd
-from meth5.meth5 import MetH5File
+from meth5 import MetH5File
+
+__description__ = "Annotate reads with read group"
+
+
+def set_arguments(sc_args: argparse.ArgumentParser):
+    sc_args.add_argument(
+        "--m5file",
+        required=True,
+        type=argtype_M5File,
+        help="MetH5 file containing methylation calls",
+    )
+    
+    sc_args.add_argument(
+        "--read_groups_key",
+        type=str,
+        required=True,
+        help="Read groups key under which the groups should be stored",
+    )
+    
+    sc_args.add_argument(
+        "--read_group_file",
+        type=Path,
+        required=True,
+        help="Tab-delimited file containing columns read_name and numeric group",
+    )
 
 
 def read_readgroups(readgroups_file: IO):

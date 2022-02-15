@@ -1,8 +1,11 @@
+import argparse
 from typing import List
 import tqdm
 import pandas as pd
 from pathlib import Path
-from meth5.meth5 import MetH5File
+from meth5 import MetH5File
+from meth5.util import argtype_M5File
+
 
 def isint(s):
     try:
@@ -10,7 +13,65 @@ def isint(s):
         return True
     except:
         return False
+
+__description__ = "Merge m5 file from Nanopolish result files"
+
+def set_arguments(sc_args: argparse.ArgumentParser):
+    sc_args.add_argument(
+        "--input_m5_files",
+        type=argtype_M5File,
+        required=True,
+        nargs="+",
+        help="List of MetH5 files",
+    )
     
+    sc_args.add_argument(
+        "--read_group_names",
+        type=str,
+        required=True,
+        nargs="+",
+        help="One name per input file",
+    )
+    
+    sc_args.add_argument(
+        "--read_groups_key",
+        type=str,
+        required=True,
+        help="Read groups key under which the groups should be stored",
+    )
+    
+    sc_args.add_argument(
+        "--output_file",
+        type=Path,
+        required=True,
+        help="Output MetH5 file",
+    )
+    
+    sc_args.add_argument(
+        "--quiet",
+        action="store_true",
+        help="No progress bar or warnings will be displayed",
+    )
+    
+    sc_args.add_argument(
+        "--compression",
+        type=str,
+        required=False,
+        default="gzip",
+        choices=["gzip", "None"],
+        help="Compression method for the MetH5 data structures. Use 'gzip' for smaller file size, or 'None' for "
+        "faster read and write speeds",
+    )
+    
+    sc_args.add_argument(
+        "--allowed_chromosomes",
+        type=str,
+        nargs="+",
+        required=False,
+        default=None,
+        help="Only include these chromosomes",
+    )
+
 
 def main(
     chunk_size: int,
@@ -32,8 +93,8 @@ def main(
         raise ValueError(f"List of read group prefixes must match number of input files")
     
     with MetH5File(output_file, chunk_size=chunk_size, mode="w", compression=compression) as m5_out:
-
-        rg_maps = {read_groups_key:{}}
+        
+        rg_maps = {read_groups_key: {}}
         for i, input_file in enumerate(input_m5_files):
             with MetH5File(input_file, "r") as m5_in:
                 print("Reading ", input_file)
@@ -44,7 +105,7 @@ def main(
                     read_group_ids = m5_in.h5_fp["reads"]["read_groups"][rg_key][()]
                     read_names = m5_in.h5_fp["reads"]["read_names_mapping"][()]
                     print("Reading read groups ", rg_key)
-                    for rn, rg_id in zip(read_names,  tqdm.tqdm(read_group_ids)):
+                    for rn, rg_id in zip(read_names, tqdm.tqdm(read_group_ids)):
                         rg_maps[rg_key][rn.decode()] = names[rg_id]
                 
                 for rn in read_names:
@@ -53,7 +114,7 @@ def main(
                     chromosomes = set(m5_in.get_chromosomes())
                 else:
                     chromosomes = set(allowed_chromosomes).intersection(set(m5_in.get_chromosomes()))
-
+                
                 print("Copying methylation calls")
                 with tqdm.tqdm(total=100, disable=quiet) as pbar:
                     progress = 0
