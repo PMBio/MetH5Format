@@ -10,14 +10,16 @@ __description__ = "Create m5 file from Nanopolish result files"
 
 def set_arguments(sc_args: argparse.ArgumentParser):
     sc_args.add_argument(
+        "-i",
         "--input_paths",
-        type=argparse.FileType,
+        type=Path,
         nargs="+",
         required=True,
         help="Path(s) to Nanopolish result files or folder containing them",
     )
     
     sc_args.add_argument(
+        "-o",
         "--output_file",
         type=Path,
         required=True,
@@ -25,12 +27,14 @@ def set_arguments(sc_args: argparse.ArgumentParser):
     )
     
     sc_args.add_argument(
+        "-q",
         "--quiet",
         action="store_true",
         help="No progress bar or warnings will be displayed",
     )
     
     sc_args.add_argument(
+        "-c",
         "--compression",
         type=str,
         required=False,
