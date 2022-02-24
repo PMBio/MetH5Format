@@ -28,14 +28,19 @@ def set_arguments(sc_args: argparse.ArgumentParser):
         help="List of MetH5 files",
     )
     
-    sc_args.add_argument(
+    group_rg = sc_args.add_mutually_exclusive_group(required=True)
+    group_rg.add_argument(
         "--read_group_names",
         type=str,
-        required=True,
         nargs="+",
         help="One name per input file",
     )
-    
+    group_rg.add_argument(
+        "--no_read_groups", action="store_true", help="No read groups in output file",
+    )
+
+    sc_args.add_argument("--no_read_names", action="store_true", help="No read names in output file", )
+
     sc_args.add_argument(
         "--read_groups_key",
         type=str,
@@ -95,7 +100,6 @@ def main(
     read_groups_key: str,
     output_file: Path,
     compression: str,
-    compression_level: int,
     allowed_chromosomes: List[str],
     no_read_groups: bool,
     quiet: bool,
@@ -118,7 +122,6 @@ def main(
         chunk_size=chunk_size,
         mode="w",
         compression=compression,
-        compression_level=compression_level,
         max_calls=total_chrom_sizes,
     ) as m5_out:
         
@@ -132,7 +135,7 @@ def main(
             max_read_id_local = 0
             with MetH5File(input_file, "r") as m5_in, tqdm.tqdm(total=100, disable=quiet) as pbar:
                 print("Reading ", input_file)
-                read_read_groups(m5_in, no_read_groups, read_group_names[i], read_groups_key, read_names, rg_maps)
+                read_read_groups(m5_in, no_read_groups, read_group_names[i], read_groups_key, rg_maps)
                 
                 if allowed_chromosomes is None:
                     chromosomes = set(m5_in.get_chromosomes())
@@ -193,7 +196,7 @@ def write_read_groups(m5_out, no_read_groups, rg_maps):
             m5_out.annotate_read_groups(rg_key, rg_map, labels)
 
 
-def read_read_groups(m5_in, no_read_groups, read_group_name, read_groups_key, read_names, rg_maps):
+def read_read_groups(m5_in, no_read_groups, read_group_name, read_groups_key, rg_maps):
     if "read_groups" in m5_in.h5_fp["reads"].keys() and not no_read_groups:
         for rg_key in m5_in.get_read_group_keys():
             names = m5_in.get_all_read_groups(rg_key)
