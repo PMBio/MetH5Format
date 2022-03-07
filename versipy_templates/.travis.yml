@@ -3,7 +3,8 @@ language: python
 python: __minimal_python__
 branches:
   only:
-  - main
+    - main
+    - dev
 install:
 - pip install meth5
 script: true
