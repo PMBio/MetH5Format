@@ -26,3 +26,4 @@
 2022-02-16 16:31:26.360303	1.0.1	Versipy auto bump-up
 2022-02-23 16:31:09.976255	1.0.1	Manually set version
 2022-02-24 09:28:44.179841	1.0.2	Versipy auto bump-up
+2022-03-07 11:46:54.104405	1.0.3	Versipy auto bump-up
