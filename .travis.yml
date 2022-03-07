@@ -4,6 +4,7 @@ python: 3.7
 branches:
   only:
   - main
+  - dev
 install:
 - pip install meth5
 script: true
