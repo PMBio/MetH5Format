@@ -10,13 +10,13 @@ install:
 script: true
 
 deploy:
-  provider: pypi
-  username: __token__
-  server: https://test.pypi.org/legacy/
-  on:
-    branch: dev
-  password:
-    secure: lfdlhjA11y6VEvlSx2NnxXV2JQjKCkHcM51VBARgrGBkMouY2arXTEyWZwVXNYa7caC6ekk/BdcIooINtcLzQpHlfPq2tI5cwzVspGlRAInhL+4AdNl20YBoOS3BhLQPWCd+jcqNkCrvErI1FNDQI4DB18Na+21CJpNXuj22RH1QaABDiZuYC4mKU4oOg1VuT+Nse5m0qSQ7WJiWskVA5qumb9BL76DgFgW37n9SuOctdevHYx4ebgSP7Tvz81XUZx89B6qCwFJu6Bzi+tMOpKjx1jAaRvjW0ttMX5/hSXgFKEUz6fzPuxkAZgj6mfV3SCQM1q2zImT9geC8eap/SEUkG8q4jYRqjBlspIr7eIQWpNMlQDZchQSBYs0bRUODiF31HrCwXVFWK1xHwbzB5rXt4R9bv4uvhkWIvVH+ACcC5GYAxJslInROY6M99Tt8HpMGsrBGmU1bT+RRYWadsyA4pmg/BgCaK3Fw2Y8mIEhBxsohsgTwdZfDn4RGOp+8FzshQe/j5r1LNFJUD5G+YWvbplV5ySPE3if+/4nLA3LDrDB931Ys0duvkUqe3IeioneiB+2DOUHhjmEDY9dOd+dju0dDeF0PL4TcJrlXxOo8oVRq3CZz/Q08ubHj3JaqDatP6UmTm04kEes8uenl8vwggGjUb3gZEgZWSqVS/Jk=
+  - provider: pypi
+    username: __token__
+    server: https://test.pypi.org/legacy/
+    on:
+      branch: dev
+    password:
+      secure: lfdlhjA11y6VEvlSx2NnxXV2JQjKCkHcM51VBARgrGBkMouY2arXTEyWZwVXNYa7caC6ekk/BdcIooINtcLzQpHlfPq2tI5cwzVspGlRAInhL+4AdNl20YBoOS3BhLQPWCd+jcqNkCrvErI1FNDQI4DB18Na+21CJpNXuj22RH1QaABDiZuYC4mKU4oOg1VuT+Nse5m0qSQ7WJiWskVA5qumb9BL76DgFgW37n9SuOctdevHYx4ebgSP7Tvz81XUZx89B6qCwFJu6Bzi+tMOpKjx1jAaRvjW0ttMX5/hSXgFKEUz6fzPuxkAZgj6mfV3SCQM1q2zImT9geC8eap/SEUkG8q4jYRqjBlspIr7eIQWpNMlQDZchQSBYs0bRUODiF31HrCwXVFWK1xHwbzB5rXt4R9bv4uvhkWIvVH+ACcC5GYAxJslInROY6M99Tt8HpMGsrBGmU1bT+RRYWadsyA4pmg/BgCaK3Fw2Y8mIEhBxsohsgTwdZfDn4RGOp+8FzshQe/j5r1LNFJUD5G+YWvbplV5ySPE3if+/4nLA3LDrDB931Ys0duvkUqe3IeioneiB+2DOUHhjmEDY9dOd+dju0dDeF0PL4TcJrlXxOo8oVRq3CZz/Q08ubHj3JaqDatP6UmTm04kEes8uenl8vwggGjUb3gZEgZWSqVS/Jk=
   - provider: script
     skip_cleanup: true
     on:
