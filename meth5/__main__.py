@@ -5,6 +5,7 @@ import meth5.main_merge_m5
 import meth5.main_annotate_reads
 import meth5.main_list_chunks
 import meth5.main_bedgraph
+import meth5.main_bedstats
 
 
 def main():
@@ -28,6 +29,7 @@ def main():
         "annotate_reads": meth5.main_annotate_reads,
         "list_chunks": meth5.main_list_chunks,
         "bedgraph": meth5.main_bedgraph,
+        "region_stats": meth5.main_bedstats
     }
     
     for subcommand, command_module in subcommands.items():
