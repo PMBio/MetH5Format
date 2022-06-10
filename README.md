@@ -1,4 +1,4 @@
-# MetH5Format 1.1.0
+# MetH5Format 1.1.1
 
 [![GitHub license](https://img.shields.io/github/license/snajder-r/meth5format.svg)](https://github.com/snajder-r/meth5format/blob/master/LICENSE)
 [![DOI](https://zenodo.org/badge/303672813.svg)](https://zenodo.org/badge/latestdoi/303672813)
@@ -24,43 +24,117 @@ In the current version, the MetH5 format can store the following information:
 
 Through pip:
 
-```
-pip install meth5
-````
+
+     $ pip install meth5
+
 
 Through anaconda:
 
-```
-conda install -c snajder-r meth5
-```
+
+     $ conda install -c snajder-r meth5
+
 
 ##  Usage
+
+    usage: meth5 [-h] [--chunk_size CHUNK_SIZE] {create_m5,merge_m5,annotate_reads,list_chunks,bedgraph,region_stats} .
 
 ### Creating a MetH5 file from nanopolish methylation calls
 
 You can create a MetH5 file with the following command, where `INPUT_PATH` refers to either a nanopolish tsv output file (may or may not be gzipped) or it can be a directory which contains only said files. 
 
-```
-meth5 create_m5 --input_paths INPUT_PATH1 [INPUT_PATH2 ...] --output_file OUTPUT_FILE.m5
-```
+
+    $ meth5 create_m5 --input_paths INPUT_PATH1 [INPUT_PATH2 ...] --output_file OUTPUT_FILE.m5
+
 
 In order to annotate reads with read grouping (for example as samples or haplotypes) you can do so by running: 
 
-```
-meth annotate_reads --m5file M5FILE.m5 --read_groups_key READ_GROUPS_KEY --read_group_file READ_GROUP_FILE
-```
+    $ meth annotate_reads --m5file M5FILE.m5 --read_groups_key READ_GROUPS_KEY --read_group_file READ_GROUP_FILE
+
 
 Where the `READ_GROUPS_KEY` is the key under which you want to store the annotation (you can store multiple read annotations), 
 and `READ_GROUP_FILE` is a tab-delimited file containg read name and read group. For example:
 
-```
-read_name   group
-7741f9ee-ad41-42a4-99b2-290c66960410    1
-4f18b48e-a1d3-49ad-ace3-cfb96b78ad79    2
-...
-```
+    read_name   group
+    7741 f9ee-ad41-42a4-99b2-290c66960410    1
+    4f18b48e-a1d3-49ad-ace3-cfb96b78ad79    2
+    ...
 
-### Quick start for python API
+
+### Summarize contents of meth5 file
+
+The `list_chunks` subcommand tells you how many chunks per chromosome are stored in the meth5 container.
+Pro-tip: combined with `--chunk_size 1` you can find out the exact number of methylation calls stored.
+
+    $ meth5 list_chunks -i INPUT_FILE.m5
+    --------- INPUT_FILE.m5 ---------
+    | Chromosome | Number of chunks |
+    | 1          | 947              |
+    | 10         | 497              |
+    | 11         | 463              |
+    | 12         | 462              |
+    | 13         | 284              |
+    | 14         | 305              |
+    | 15         | 309              |
+    | 16         | 484              |
+    | 17         | 416              |
+    | 18         | 245              |
+    | 19         | 361              |
+    | 2          | 782              |
+    | 20         | 272              |
+    | 21         | 187              |
+    | 3          | 589              |
+    | 4          | 532              |
+    | 5          | 536              |
+    | 6          | 532              |
+    | 7          | 561              |
+    | 8          | 467              |
+    | 9          | 421              |
+    | X          | 229              |
+    | Y          | 41               |
+    ---------------------------------
+
+### Extracting bedgraph for visualization in IGV
+Using the `bedgraph` subcommand you can extract a [bedgraph](https://genome.ucsc.edu/goldenpath/help/bedgraph.html) file containing either methylation rate or coverage from a specific region:
+
+For coverage:
+
+    $ meth5 bedgraph -i INPUT_FILE.m5 -r 10:8096651-8117161 -d coverage
+    track type=bedGraph name=coverage description=center_label visibility=display_mode color=252,127,44 altColor=25,4,248 graphType=heatmap viewLimits=0:1 midRange=0.50:0.50 midColor=255,255,255
+    10 8096848 8096848 13
+    10 8096917 8096917 20
+    10 8097065 8097065 12
+    10 8097101 8097101 15
+    [...]
+
+For methylation rate:
+
+    $ meth5 bedgraph -i INPUT_FILE.m5 -r 10:8096651-8117161 -d methylation
+    track type=bedGraph name=methylation description=center_label visibility=display_mode color=252,127,44 altColor=25,4,248 graphType=heatmap viewLimits=0:1 midRange=0.50:0.50 midColor=255,255,255
+    10 8096848 8096848 0.6153846153846154
+    10 8096917 8096917 1.0
+    10 8097065 8097065 0.4166666666666667
+    10 8097101 8097101 0.7333333333333333
+    [...]
+
+### Summarizing intervals from a BED file
+The `region_stats` subcommand allows extraction of statistics from a number of intervals specified in BED format.
+The output is written as a tab-separated file with a header line
+
+Providing the following BED file `regions.bed`
+
+    1   8096651     8117161
+    6   5997999     6007605
+    3   12287368    12434356
+
+Then we can run:
+
+    $ meth5 region_stats -i INPUT_FILE.m5 -b regions.bed -d meth_rate cpgs_covered num_calls
+    chrom	start	    end         meth_rate           cpgs_covered    num_calls
+    1       8096651	    8117161     0.6856130377221707  222	            2699
+    6       5997999	    6007605     0.22394436811259413 233	            3990
+    3       12287368    12434356    0.6141979503555554  1103            18816
+
+## Quick start for python API
 
 Here an example on how to access methylation values from a MetH5 file:
 
@@ -170,9 +244,9 @@ Where `n` is the number of methylation calls in the respective chromosome, `c` i
 
 ## Citing
 
-The repository is archived at Zenodo. If you use `meth5` please cite as follow:
+If you find the meth5 format helped you in your research, you can cite the following preprint:
 
-Rene Snajder. (2021, May 18). snajder-r/meth5. Zenodo. https://doi.org/10.5281/zenodo.4772327
+Snajder, Rene H., Oliver Stegle, and Marc Jan Bonder. 2022. “PycoMeth: A Toolbox for Differential Methylation Testing from Nanopore Methylation Calls.” bioRxiv. https://doi.org/10.1101/2022.02.16.480699.
 
 ## Authors and contributors
 
