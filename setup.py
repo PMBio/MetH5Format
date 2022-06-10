@@ -11,7 +11,7 @@ with open("README.md", "r") as fh:
 setup(
     name="meth5",
     description="HDF5 based file format for storage, retrieval, and analysis of modification predictions from Nanopore",
-    version="1.1.1",
+    version="1.1.1rc1",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/snajder-r/meth5format",
@@ -26,6 +26,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3"
     ],
+    setup_requires=["importlib-metadata==4.11.3"],
     install_requires=[
         "numpy>=1.19.2",
         "scipy==1.4.1",

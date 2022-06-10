@@ -6,7 +6,7 @@ branches:
     - main
     - dev
 install:
-- pip install importlib-metadata==4.11.3 meth5
+- pip install meth5
 script: true
 
 deploy:
