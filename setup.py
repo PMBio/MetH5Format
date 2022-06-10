@@ -26,7 +26,6 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3"
     ],
-    setup_requires=["importlib-metadata==4.11.3"],
     install_requires=[
         "numpy>=1.19.2",
         "scipy==1.4.1",
