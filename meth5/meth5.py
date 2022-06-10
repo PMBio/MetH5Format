@@ -719,10 +719,7 @@ class MetH5File:
     def _encode_read_names(self, read_names: List[str]):
         if len(read_names) == 0:
             return []
-        read_name_len = len(read_names[0])
-        # All read names have same length
-        assert all([len(read) == read_name_len for read in read_names])
-        
+            
         main_group = self.h5_fp.require_group("reads")
         if "read_names_mapping" in main_group.keys():
             read_names_mapping_ds = main_group["read_names_mapping"]
