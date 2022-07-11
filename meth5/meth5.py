@@ -456,6 +456,12 @@ class ChromosomeContainer:
         """
         return [i for i in range(self.get_number_of_chunks())]
     
+    def get_genomic_range(self) -> Tuple[int,int]:
+        """
+        :return: Start coordinate of first and end coordinate of last call
+        """
+        return self.h5group["range"][0,0], self.h5group["range"][-1,-1]
+    
     def _seek_overlap_ranges_backwards(self, chunk_id: int, start_value: int = -1) -> int:
         """This helper function recursively looks backwards starting
         from a specified chunk, and returns the index of the first
