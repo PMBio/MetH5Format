@@ -45,6 +45,7 @@ def set_arguments(sc_args: argparse.ArgumentParser):
         "--read_groups_key",
         type=str,
         required=True,
+        default=None,
         help="Read groups key under which the groups should be stored",
     )
     
