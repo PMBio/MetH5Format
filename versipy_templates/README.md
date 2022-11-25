@@ -246,7 +246,7 @@ Where `n` is the number of methylation calls in the respective chromosome, `c` i
 
 If you find the meth5 format helped you in your research, you can cite the following preprint:
 
-Snajder, Rene H., Oliver Stegle, and Marc Jan Bonder. 2022. “PycoMeth: A Toolbox for Differential Methylation Testing from Nanopore Methylation Calls.” bioRxiv. https://doi.org/10.1101/2022.02.16.480699.
+Snajder, Rene H., Oliver Stegle, and Marc Jan Bonder. 2022. "PycoMeth: A Toolbox for Differential Methylation Testing from Nanopore Methylation Calls." bioRxiv. https://doi.org/10.1101/2022.02.16.480699.
 
 ## Authors and contributors
 

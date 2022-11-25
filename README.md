@@ -1,4 +1,4 @@
-# MetH5Format 1.1.1
+# MetH5Format 1.2.0
 
 [![GitHub license](https://img.shields.io/github/license/snajder-r/meth5format.svg)](https://github.com/snajder-r/meth5format/blob/master/LICENSE)
 [![DOI](https://zenodo.org/badge/303672813.svg)](https://zenodo.org/badge/latestdoi/303672813)
@@ -246,7 +246,7 @@ Where `n` is the number of methylation calls in the respective chromosome, `c` i
 
 If you find the meth5 format helped you in your research, you can cite the following preprint:
 
-Snajder, Rene H., Oliver Stegle, and Marc Jan Bonder. 2022. “PycoMeth: A Toolbox for Differential Methylation Testing from Nanopore Methylation Calls.” bioRxiv. https://doi.org/10.1101/2022.02.16.480699.
+Snajder, Rene H., Oliver Stegle, and Marc Jan Bonder. 2022. "PycoMeth: A Toolbox for Differential Methylation Testing from Nanopore Methylation Calls." bioRxiv. https://doi.org/10.1101/2022.02.16.480699.
 
 ## Authors and contributors
 
