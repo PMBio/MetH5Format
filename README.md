@@ -59,6 +59,20 @@ and `READ_GROUP_FILE` is a tab-delimited file containg read name and read group.
     4f18b48e-a1d3-49ad-ace3-cfb96b78ad79    2
     ...
 
+### Experimental: Converting a BAM file with MM and ML tag to MetH5 
+
+The MetH5 CLI supports conversion from BAM files with MM and ML tag, as produced by Guppy and Remora.
+This, however, depends on **pysam** which at this time does not support the "?" tag written by these callers.
+
+Once issue https://github.com/pysam-developers/pysam/issues/1123 is fixed, you can convert BAM files to MetH5 files using:
+
+
+    $ meth5 convert -i INPUT_FILE1.bam INPUT_FILE2.bam INPUT_FILEN.bam -o OUTPUT_FILE.m5
+
+You can also filter based on chromosomes, in case you are only interested in specific reference contigs:
+
+    $ meth5 convert -i INPUT_FILE1.bam INPUT_FILE2.bam INPUT_FILEN.bam -o OUTPUT_FILE.m5 -c chr1 chr2 chr3
+
 
 ### Summarize contents of meth5 file
 
