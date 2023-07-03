@@ -1,7 +1,7 @@
 # MetH5Format __package_version__
 
 [![GitHub license](https://img.shields.io/github/license/snajder-r/meth5format.svg)](https://github.com/snajder-r/meth5format/blob/master/LICENSE)
-[![DOI](https://zenodo.org/badge/303672813.svg)](https://zenodo.org/badge/latestdoi/303672813)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7351710.svg)](https://doi.org/10.5281/zenodo.7351710)
 [![Language](https://img.shields.io/badge/Language-Python3.7+-yellow.svg)](https://www.python.org/)
 [![Build Status](https://travis-ci.com/snajder-r/meth5format.svg?branch=main)](https://travis-ci.com/snajder-r/meth5format)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-black.svg?style=flat)](https://github.com/snajder-r/black "Black (modified)")
@@ -58,6 +58,20 @@ and `READ_GROUP_FILE` is a tab-delimited file containg read name and read group.
     7741 f9ee-ad41-42a4-99b2-290c66960410    1
     4f18b48e-a1d3-49ad-ace3-cfb96b78ad79    2
     ...
+
+### Experimental: Converting a BAM file with MM and ML tag to MetH5 
+
+The MetH5 CLI supports conversion from BAM files with MM and ML tag, as produced by Guppy and Remora.
+This, however, depends on **pysam** which at this time does not support the "?" tag written by these callers.
+
+Once issue https://github.com/pysam-developers/pysam/issues/1123 is fixed, you can convert BAM files to MetH5 files using:
+
+
+    $ meth5 convert -i INPUT_FILE1.bam INPUT_FILE2.bam INPUT_FILEN.bam -o OUTPUT_FILE.m5
+
+You can also filter based on chromosomes, in case you are only interested in specific reference contigs:
+
+    $ meth5 convert -i INPUT_FILE1.bam INPUT_FILE2.bam INPUT_FILEN.bam -o OUTPUT_FILE.m5 -c chr1 chr2 chr3
 
 
 ### Summarize contents of meth5 file
@@ -244,9 +258,19 @@ Where `n` is the number of methylation calls in the respective chromosome, `c` i
 
 ## Citing
 
-If you find the meth5 format helped you in your research, you can cite the following preprint:
+If you find the MetH5 format helped you in your research, you can cite the following preprint:
 
-Snajder, Rene H., Oliver Stegle, and Marc Jan Bonder. 2022. “PycoMeth: A Toolbox for Differential Methylation Testing from Nanopore Methylation Calls.” bioRxiv. https://doi.org/10.1101/2022.02.16.480699.
+Snajder, Rene H., Oliver Stegle, and Marc Jan Bonder. 2022. "PycoMeth: A Toolbox for Differential Methylation Testing from Nanopore Methylation Calls." bioRxiv. https://doi.org/10.1101/2022.02.16.480699.
+
+
+    @article {Snajder2022.02.16.480699,
+        author = {Snajder, Rene and Leger, Adrien and Stegle, Oliver and Bonder, Marc Jan},
+	    title = {pycoMeth: A toolbox for differential methylation testing from Nanopore methylation calls},
+	    year = {2022}, doi = {10.1101/2022.02.16.480699}, publisher = {Cold Spring Harbor Laboratory},
+        journal = {bioRxiv}
+    }
+
+
 
 ## Authors and contributors
 
