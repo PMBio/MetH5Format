@@ -270,4 +270,4 @@ Snajder R, Leger A, Stegle O, Bonder MJ. pycoMeth: a toolbox for differential me
 
 ## Authors and contributors
 
-* Rene Snajder (@snajder-r): rene.snajder(at)dkfz-heidelberg.de
+* Rene Snajder (@snajder-r): rene.snajder(at)gmail.com
