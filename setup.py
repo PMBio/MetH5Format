@@ -18,7 +18,7 @@ setup(
     author="Rene Snajder",
     author_email="r.snajder@dkfz-heidelberg.de",
     license="MIT",
-    python_requires=">=3.7",
+    python_requires="==3.8.18",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Intended Audience :: Science/Research",
@@ -27,11 +27,11 @@ setup(
         "Programming Language :: Python :: 3"
     ],
     install_requires=[
-        "numpy>=1.19.2",
+        "numpy==1.19.2",
         "scipy==1.4.1",
-        "pandas>=1.1.3",
+        "pandas==1.1.3",
         "h5py==2.9.0",
-        "pysam>=0.20.0",
+        "pysam==0.22.0",
         "tqdm",
         "setuptools"
     ],
